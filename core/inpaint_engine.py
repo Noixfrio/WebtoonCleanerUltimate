@@ -20,23 +20,14 @@ class InpaintEngine:
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         mask_refined = cv2.dilate(mask, kernel, iterations=1)
 
-        # Main Inpaint: NS algorithm with Radius 3 for maximum sharpness
-        cleaned = cv2.inpaint(image, mask_refined, 3, cv2.INPAINT_NS)
+        # Main Inpaint: TELEA algorithm is better for structured blocks with clear masking like Text
+        cleaned = cv2.inpaint(image, mask_refined, 3, cv2.INPAINT_TELEA)
         
-        # Noise Injection (15-sigma): Avoids unnatural 'plastic' look
-        # Done in float space to prevent overflow issues
-        noise = np.random.normal(0, 15, cleaned.shape).astype(np.float32)
-        blended_noise = cv2.add(cleaned.astype(np.float32), noise)
-        img_com_ruido = np.clip(blended_noise, 0, 255).astype(np.uint8)
+        # Merge: Preserva a imagem inteira original, substituindo apenas a área do balão 
+        # (onde mask > 0) pelo pedaço inpaintado
+        final = np.where(mask_refined[..., None] > 0, cleaned, image)
         
-        # Merge: Only apply noise + inpaint to the masked region
-        # result = np.where(mask_refined[..., None] > 0, img_com_ruido, cleaned)
-        # Optimized merge:
-        mask_inv = cv2.bitwise_not(mask_refined)
-        background = cv2.bitwise_and(cleaned, cleaned, mask=mask_inv)
-        foreground = cv2.bitwise_and(img_com_ruido, img_com_ruido, mask=mask_refined)
-        
-        return cv2.add(background, foreground)
+        return final
 
     def process(self, image: np.ndarray, mask: np.ndarray, job_id: str = "unknown") -> np.ndarray:
         """Pipeline entry point."""
