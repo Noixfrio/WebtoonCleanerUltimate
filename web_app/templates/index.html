@@ -547,7 +547,12 @@
                     readerCanvas.height = data.natHeight;
                     readerCanvas.style.width = "100%"; // CSS Auto-scale na coluna
                     readerCanvas.style.display = "block";
-                    readerCanvas.style.cursor = currentMode === 'picker' ? 'crosshair' : 'none'; // Usa o cursor bolinha nativamente
+                    readerCanvas.style.cursor = currentMode === 'picker' ? 'crosshair' : 'none';
+
+                    // Revalida cursor sempre que mudar de modo globalmente
+                    document.addEventListener('modeChanged', () => {
+                        readerCanvas.style.cursor = currentMode === 'picker' ? 'crosshair' : 'none';
+                    });
 
                     const rCtx = readerCanvas.getContext('2d', { willReadFrequently: true });
                     rCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
@@ -653,13 +658,16 @@
             if (mode === 'restore') document.getElementById('btnRestore').classList.add('active');
             if (mode === 'picker') document.getElementById('btnEyeDropper').classList.add('active');
 
-            // Update cursor
+            // Dispara evento para o Reader View atualizar
+            document.dispatchEvent(new CustomEvent('modeChanged'));
+
+            // Update cursor do Modo Editor Original
             window.canvases.forEach(c => {
                 if (c.fg) {
                     if (mode === 'picker') {
                         c.fg.style.cursor = 'crosshair';
                     } else {
-                        c.fg.style.cursor = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><circle cx='10' cy='10' r='9' fill='none' stroke='white' stroke-width='2'/></svg>") 10 10, crosshair`;
+                        c.fg.style.cursor = 'none'; // Esconde seta padrão pra usar a bolinha
                     }
                 }
             });
