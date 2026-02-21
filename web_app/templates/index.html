@@ -220,6 +220,50 @@
             margin-bottom: 10px;
             text-align: center;
         }
+
+        /* Reader View */
+        .view-toggler {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 25px 0 15px 0;
+        }
+
+        .view-btn {
+            background-color: #334155;
+            color: white;
+            border: 2px solid transparent;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .view-btn.active {
+            background-color: #2563eb;
+            border-color: #60a5fa;
+            box-shadow: 0 0 10px rgba(37, 99, 235, 0.4);
+        }
+
+        .reader-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            background: #0f172a;
+        }
+
+        /* Tira qualquer respiro de distncia entre imagens */
+        .reader-view img {
+            width: 100%;
+            display: block;
+            margin: 0;
+            padding: 0;
+            border: none;
+        }
     </style>
 </head>
 
@@ -244,7 +288,13 @@
             <progress id="progressBar" value="0" max="100"></progress>
         </div>
 
+        <div id="viewToggler" class="view-toggler" style="display: none;">
+            <button id="btnViewEdit" class="view-btn active" onclick="switchView('edit')">✏️ Editor Lado-a-Lado</button>
+            <button id="btnViewReader" class="view-btn" onclick="switchView('reader')">📱 Leitor Webtoon</button>
+        </div>
+
         <div id="preview"></div>
+        <div id="readerView" class="reader-view" style="display: none;"></div>
     </div>
 
     <script>
@@ -304,6 +354,8 @@
                 if (info.status === "done") {
                     document.getElementById("downloadBtn").style.display = "inline-flex";
                     document.getElementById("cancelBtn").style.display = "none";
+                    document.getElementById("viewToggler").style.display = "flex";
+                    switchView('edit'); // Reseta para editor nativo
                     loadPreview(info.files);
                 }
                 if (info.status === "cancelled") {
@@ -383,6 +435,49 @@
 
         let currentMode = 'paint'; // 'paint', 'restore', 'picker'
         let isDrawing = false;
+        let currentView = 'edit'; // 'edit' ou 'reader'
+
+        function switchView(view) {
+            currentView = view;
+
+            const btnEdit = document.getElementById('btnViewEdit');
+            const btnReader = document.getElementById('btnViewReader');
+            const previewDiv = document.getElementById("preview");
+            const readerDiv = document.getElementById("readerView");
+            const toolbarDiv = document.getElementById("mangaToolbar");
+
+            if (view === 'edit') {
+                btnEdit.classList.add('active');
+                btnReader.classList.remove('active');
+                previewDiv.style.display = "block";
+                if (toolbarDiv) toolbarDiv.style.display = "flex";
+                readerDiv.style.display = "none";
+                readerDiv.innerHTML = ""; // Limpa a memória
+            } else {
+                btnEdit.classList.remove('active');
+                btnReader.classList.add('active');
+                previewDiv.style.display = "none";
+                if (toolbarDiv) toolbarDiv.style.display = "none";
+                readerDiv.style.display = "flex";
+
+                // Monta o visualizador combinando as edições feitas na hora
+                readerDiv.innerHTML = "";
+                window.canvases.forEach(data => {
+                    if (!data) return;
+                    // Offscreen canvas para fundir Fundo(BG) + Pinturas(FG) em Alta Resolução
+                    const offscreen = document.createElement('canvas');
+                    offscreen.width = data.natWidth;
+                    offscreen.height = data.natHeight;
+                    const oCtx = offscreen.getContext('2d');
+                    oCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
+                    oCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
+
+                    const img = document.createElement('img');
+                    img.src = offscreen.toDataURL("image/jpeg", 0.90); // JPEG com compressão limpa para não travar navegador
+                    readerDiv.appendChild(img);
+                });
+            }
+        }
 
         function setMode(mode) {
             currentMode = mode;
