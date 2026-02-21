@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,6 +14,7 @@
             --danger: #ef4444;
             --text: #f8fafc;
         }
+
         body {
             background: var(--bg);
             color: var(--text);
@@ -24,10 +26,12 @@
             min-height: 100vh;
             padding: 40px;
         }
+
         .container {
             max-width: 800px;
             width: 100%;
         }
+
         h2 {
             font-size: 2.5rem;
             margin-bottom: 30px;
@@ -35,6 +39,7 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+
         #dropzone {
             border: 2px dashed var(--primary);
             background: var(--card);
@@ -46,21 +51,25 @@
             font-size: 1.2rem;
             color: #94a3b8;
         }
+
         #dropzone:hover {
             border-color: #60a5fa;
             background: #2d3748;
             transform: translateY(-2px);
         }
+
         #dropzone.active {
             background: #2563eb33;
             border-color: #93c5fd;
         }
+
         .controls {
             display: flex;
             gap: 12px;
             justify-content: center;
             margin-bottom: 30px;
         }
+
         button {
             padding: 12px 24px;
             border: none;
@@ -72,14 +81,27 @@
             align-items: center;
             gap: 8px;
         }
+
         button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-        .btn-start { background: var(--primary); color: white; }
-        .btn-cancel { background: var(--danger); color: white; }
-        .btn-download { background: var(--accent); color: white; }
-        
+
+        .btn-start {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-cancel {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-download {
+            background: var(--accent);
+            color: white;
+        }
+
         button:hover:not(:disabled) {
             filter: brightness(1.1);
             transform: scale(1.02);
@@ -92,6 +114,7 @@
             margin-bottom: 30px;
             display: none;
         }
+
         progress {
             width: 100%;
             height: 12px;
@@ -99,154 +122,401 @@
             margin: 15px 0;
             accent-color: var(--primary);
         }
-        #preview {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 40px;
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            /* CRITICAL FIX: Impede que botões caiam para fora da tela */
+            gap: 10px;
+            background: #2d3748;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            align-items: center;
+            justify-content: center;
         }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #1e293b;
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: 1px solid #475569;
+            color: #cbd5e1;
+            padding: 8px 16px;
+        }
+
+        .tool-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .tool-btn.restore {
+            background: #f97316;
+            /* Laranja conforme log */
+            color: white;
+            border-color: #f97316;
+        }
+
+        .tool-btn.restore.active {
+            filter: brightness(1.2);
+            box-shadow: 0 0 10px #f97316aa;
+        }
+
+        #preview {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            margin-top: 20px;
+            width: 100%;
+        }
+
         .preview-card {
             background: var(--card);
-            padding: 12px;
+            padding: 20px;
             border-radius: 12px;
-            overflow: hidden;
-        }
-        .preview-images {
             display: flex;
-            gap: 8px;
+            flex-direction: column;
+            align-items: center;
         }
-        .preview-card img {
-            width: 50%;
-            border-radius: 4px;
-            object-fit: contain;
+
+        .canvas-container {
+            position: relative;
+            margin-top: 15px;
             background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            display: inline-block;
         }
+
+        .canvas-container canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .canvas-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .canvas-fg {
+            position: relative;
+            z-index: 2;
+        }
+
         .label {
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #64748b;
-            margin-bottom: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 10px;
+            text-align: center;
         }
     </style>
 </head>
+
 <body>
 
-<div class="container">
-    <h2>Webtoon Cleaner Ultimate</h2>
+    <div class="container">
+        <h2>Webtoon Cleaner Ultimate</h2>
 
-    <div id="dropzone">
-        Arraste as imagens (PNG/JPG) aqui ou clique para selecionar
+        <div id="dropzone">
+            Arraste as imagens (PNG/JPG) aqui ou clique para selecionar
+        </div>
+        <input type="file" id="fileInput" multiple hidden accept="image/*">
+
+        <div class="controls">
+            <button id="startBtn" class="btn-start" onclick="start()" disabled>Iniciar Processamento</button>
+            <button id="cancelBtn" class="btn-cancel" onclick="cancel()" style="display:none">Cancelar</button>
+            <button id="downloadBtn" class="btn-download" onclick="download()" style="display:none">Baixar ZIP</button>
+        </div>
+
+        <div id="statusPanel" class="status-panel">
+            <div id="statusText">Aguardando...</div>
+            <progress id="progressBar" value="0" max="100"></progress>
+        </div>
+
+        <div id="preview"></div>
     </div>
-    <input type="file" id="fileInput" multiple hidden accept="image/*">
 
-    <div class="controls">
-        <button id="startBtn" class="btn-start" onclick="start()" disabled>Iniciar Processamento</button>
-        <button id="cancelBtn" class="btn-cancel" onclick="cancel()" style="display:none">Cancelar</button>
-        <button id="downloadBtn" class="btn-download" onclick="download()" style="display:none">Baixar ZIP</button>
-    </div>
+    <script>
+        let selectedFiles = [];
+        let sessionId = null;
+        let ws = null;
 
-    <div id="statusPanel" class="status-panel">
-        <div id="statusText">Aguardando...</div>
-        <progress id="progressBar" value="0" max="100"></progress>
-    </div>
+        const dropzone = document.getElementById("dropzone");
+        const fileInput = document.getElementById("fileInput");
+        const startBtn = document.getElementById("startBtn");
+        const statusPanel = document.getElementById("statusPanel");
 
-    <div id="preview"></div>
-</div>
+        dropzone.onclick = () => fileInput.click();
+        fileInput.onchange = e => handleFiles(e.target.files);
 
-<script>
-    let selectedFiles = [];
-    let sessionId = null;
-    let ws = null;
+        dropzone.ondragover = e => { e.preventDefault(); dropzone.classList.add('active'); }
+        dropzone.ondragleave = () => dropzone.classList.remove('active');
+        dropzone.ondrop = e => {
+            e.preventDefault();
+            dropzone.classList.remove('active');
+            handleFiles(e.dataTransfer.files);
+        };
 
-    const dropzone = document.getElementById("dropzone");
-    const fileInput = document.getElementById("fileInput");
-    const startBtn = document.getElementById("startBtn");
-    const statusPanel = document.getElementById("statusPanel");
-
-    dropzone.onclick = () => fileInput.click();
-    fileInput.onchange = e => handleFiles(e.target.files);
-
-    dropzone.ondragover = e => { e.preventDefault(); dropzone.classList.add('active'); }
-    dropzone.ondragleave = () => dropzone.classList.remove('active');
-    dropzone.ondrop = e => {
-        e.preventDefault();
-        dropzone.classList.remove('active');
-        handleFiles(e.dataTransfer.files);
-    };
-
-    function handleFiles(files) {
-        selectedFiles = files;
-        if (files.length > 0) {
-            dropzone.innerText = `${files.length} arquivos carregados`;
-            startBtn.disabled = false;
-        }
-    }
-
-    async function start() {
-        const formData = new FormData();
-        for (let file of selectedFiles) {
-            formData.append("files", file);
-        }
-
-        startBtn.disabled = true;
-        statusPanel.style.display = "block";
-        document.getElementById("cancelBtn").style.display = "inline-flex";
-
-        const response = await fetch("/start", { method: "POST", body: formData });
-        const data = await response.json();
-        sessionId = data.session;
-
-        // Connect WebSocket
-        ws = new WebSocket(`ws://${window.location.host}/ws/${sessionId}`);
-
-        ws.onmessage = event => {
-            const info = JSON.parse(event.data);
-            const percent = (info.processed / info.total) * 100;
-            
-            document.getElementById("progressBar").value = percent;
-            document.getElementById("statusText").innerText = 
-                `Processando: ${info.processed} / ${info.total} (${info.status})`;
-
-            if (info.status === "done") {
-                document.getElementById("downloadBtn").style.display = "inline-flex";
-                document.getElementById("cancelBtn").style.display = "none";
-                loadPreview(info.files);
-            }
-            if (info.status === "cancelled") {
-                document.getElementById("statusText").innerText = "Processo Cancelado.";
+        function handleFiles(files) {
+            selectedFiles = files;
+            if (files.length > 0) {
+                dropzone.innerText = `${files.length} arquivos carregados`;
                 startBtn.disabled = false;
             }
-        };
-    }
+        }
 
-    async function cancel() {
-        if (!sessionId) return;
-        await fetch(`/cancel/${sessionId}`, { method: "POST" });
-    }
+        async function start() {
+            const formData = new FormData();
+            for (let file of selectedFiles) {
+                formData.append("files", file);
+            }
 
-    function download() {
-        if (!sessionId) return;
-        window.location.href = `/download/${sessionId}`;
-    }
+            startBtn.disabled = true;
+            statusPanel.style.display = "block";
+            document.getElementById("cancelBtn").style.display = "inline-flex";
 
-    function loadPreview(fileNames) {
-        const previewDiv = document.getElementById("preview");
-        previewDiv.innerHTML = "";
-        
-        fileNames.forEach(name => {
-            const card = document.createElement("div");
-            card.className = "preview-card";
-            card.innerHTML = `
-                <div class="label">${name} (Before / After)</div>
-                <div class="preview-images">
-                    <img src="/processed/${sessionId}/before_${name}">
-                    <img src="/processed/${sessionId}/after_${name}">
+            const response = await fetch("/start", { method: "POST", body: formData });
+            const data = await response.json();
+            sessionId = data.session;
+
+            // Connect WebSocket
+            ws = new WebSocket(`ws://${window.location.host}/ws/${sessionId}`);
+
+            ws.onmessage = event => {
+                const info = JSON.parse(event.data);
+                const percent = (info.processed / info.total) * 100;
+
+                document.getElementById("progressBar").value = percent;
+                document.getElementById("statusText").innerText =
+                    `Processando: ${info.processed} / ${info.total} (${info.status})`;
+
+                if (info.status === "done") {
+                    document.getElementById("downloadBtn").style.display = "inline-flex";
+                    document.getElementById("cancelBtn").style.display = "none";
+                    loadPreview(info.files);
+                }
+                if (info.status === "cancelled") {
+                    document.getElementById("statusText").innerText = "Processo Cancelado.";
+                    startBtn.disabled = false;
+                }
+            };
+        }
+
+        async function cancel() {
+            if (!sessionId) return;
+            await fetch(`/cancel/${sessionId}`, { method: "POST" });
+        }
+
+        function download() {
+            if (!sessionId) return;
+            window.location.href = `/download/${sessionId}`;
+        }
+
+        function loadPreview(fileNames) {
+            const previewDiv = document.getElementById("preview");
+            previewDiv.innerHTML = "";
+            window.canvases = [];
+
+            // Toolbar HTML Global injection
+            if (!document.getElementById('mangaToolbar')) {
+                const toolbarHTML = `
+                <div id="mangaToolbar" class="toolbar">
+                    <div class="toolbar-group">
+                        <button class="tool-btn active" id="btnPaint" onclick="setMode('paint')">🖌️ Pintar</button>
+                        <button class="tool-btn restore" id="btnRestore" onclick="setMode('restore')">🪄 Restauração</button>
+                    </div>
+                    <div class="toolbar-group">
+                        <input type="color" id="colorPicker" value="#ffffff">
+                        <button class="tool-btn" id="btnEyeDropper" onclick="activateEyeDropper()">💧 Pipeta</button>
+                    </div>
+                    <div class="toolbar-group">
+                        <label style="font-size: 12px; color: #94a3b8;">Tamanho:</label>
+                        <input type="range" id="brushSize" min="2" max="100" value="20">
+                    </div>
+                </div>`;
+                previewDiv.insertAdjacentHTML('beforebegin', toolbarHTML);
+            }
+
+            fileNames.forEach((name, index) => {
+                const card = document.createElement("div");
+                card.className = "preview-card";
+
+                const beforeUrl = `/processed/${sessionId}/before_${name}`;
+                const afterUrl = `/processed/${sessionId}/after_${name}`;
+
+                card.innerHTML = `
+                <div class="label" style="display:flex; justify-content:space-between; width:100%;">
+                    <span>${name}</span>
+                    <button class="tool-btn" style="padding: 4px 8px; font-size:12px;" onclick="downloadEdited(${index}, '${name}')">💾 Salvar Edição</button>
                 </div>
-            `;
-            previewDiv.appendChild(card);
-        });
-    }
-</script>
+                <!-- Container Stacking Before(Bg) and After(Fg) -->
+                <div class="canvas-container" id="container_${index}">
+                    <canvas id="bg_${index}" class="canvas-bg"></canvas>
+                    <canvas id="fg_${index}" class="canvas-fg"></canvas>
+                </div>`;
+
+                previewDiv.appendChild(card);
+                setupCanvas(index, beforeUrl, afterUrl);
+            });
+        }
+
+        let currentMode = 'paint'; // 'paint', 'restore', 'picker'
+        let isDrawing = false;
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            if (mode === 'paint') document.getElementById('btnPaint').classList.add('active');
+            if (mode === 'restore') document.getElementById('btnRestore').classList.add('active');
+            if (mode === 'picker') document.getElementById('btnEyeDropper').classList.add('active');
+
+            // Update cursor
+            window.canvases.forEach(c => {
+                if (c.fg) {
+                    if (mode === 'picker') {
+                        c.fg.style.cursor = 'crosshair';
+                    } else {
+                        c.fg.style.cursor = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><circle cx='10' cy='10' r='9' fill='none' stroke='white' stroke-width='2'/></svg>") 10 10, crosshair`;
+                    }
+                }
+            });
+        }
+
+        function activateEyeDropper() {
+            setMode('picker');
+        }
+
+        function setupCanvas(index, bgSrc, fgSrc) {
+            const bgCanvas = document.getElementById(`bg_${index}`);
+            const fgCanvas = document.getElementById(`fg_${index}`);
+            const bgCtx = bgCanvas.getContext('2d', { willReadFrequently: true });
+            const fgCtx = fgCanvas.getContext('2d', { willReadFrequently: true });
+
+            const bgImg = new Image();
+            const fgImg = new Image();
+
+            window.canvases[index] = { bg: bgCanvas, fg: fgCanvas, renderWidth: 0, renderHeight: 0, natWidth: 0, natHeight: 0 };
+
+            bgImg.onload = () => {
+                // Resize for UI visibility keeping aspect ratio
+                const MAX_WIDTH = 700;
+                let scale = 1;
+                if (bgImg.width > MAX_WIDTH) {
+                    scale = MAX_WIDTH / bgImg.width;
+                }
+                const dw = bgImg.width * scale;
+                const dh = bgImg.height * scale;
+
+                bgCanvas.width = dw; bgCanvas.height = dh;
+                fgCanvas.width = dw; fgCanvas.height = dh;
+
+                window.canvases[index].renderWidth = dw;
+                window.canvases[index].renderHeight = dh;
+                window.canvases[index].natWidth = bgImg.width;
+                window.canvases[index].natHeight = bgImg.height;
+
+                bgCtx.drawImage(bgImg, 0, 0, dw, dh);
+
+                fgImg.onload = () => {
+                    fgCtx.drawImage(fgImg, 0, 0, dw, dh);
+                    attachDrawingEvents(fgCanvas, fgCtx, index);
+                };
+                fgImg.src = fgSrc;
+            };
+            bgImg.src = bgSrc;
+        }
+
+        function attachDrawingEvents(canvas, ctx, index) {
+            let lastX = 0, lastY = 0;
+
+            const draw = (e, isDown, isMove) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (currentMode === 'picker' && isDown) {
+                    const pixel = ctx.getImageData(x, y, 1, 1).data;
+                    const hex = "#" + ("000000" + rgbToHex(pixel[0], pixel[1], pixel[2])).slice(-6);
+                    document.getElementById('colorPicker').value = hex;
+                    setMode('paint');
+                    return;
+                }
+
+                if (isDown) {
+                    isDrawing = true;
+                    lastX = x; lastY = y;
+                }
+
+                if (!isDrawing) return;
+
+                const size = document.getElementById('brushSize').value;
+                const color = document.getElementById('colorPicker').value;
+
+                ctx.beginPath();
+                if (currentMode === 'restore') {
+                    // MAGIC RESTORE: Erase pixels from Foreground allowing Background to show through
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.strokeStyle = 'rgba(0,0,0,1)';
+                } else {
+                    // PAINT
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.strokeStyle = color;
+                }
+
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.lineWidth = size;
+
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+
+                lastX = x; lastY = y;
+
+                if (!isMove) isDrawing = false;
+            };
+
+            canvas.addEventListener('mousedown', e => draw(e, true, false));
+            canvas.addEventListener('mousemove', e => draw(e, false, true));
+            canvas.addEventListener('mouseup', () => isDrawing = false);
+            canvas.addEventListener('mouseleave', () => isDrawing = false);
+        }
+
+        function rgbToHex(r, g, b) {
+            return (r << 16) | (g << 8) | b;
+        }
+
+        function downloadEdited(index, fileName) {
+            const data = window.canvases[index];
+            const offscreen = document.createElement('canvas');
+            offscreen.width = data.natWidth;
+            offscreen.height = data.natHeight;
+            const oCtx = offscreen.getContext('2d');
+
+            // 1. Draw natural Original background
+            oCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
+
+            // 2. Draw edited Foreground (which contains holes for restoration, and paints)
+            oCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
+
+            const link = document.createElement('a');
+            link.download = "edited_" + fileName;
+            link.href = offscreen.toDataURL("image/png");
+            link.click();
+        }
+    </script>
 
 </body>
+
 </html>
