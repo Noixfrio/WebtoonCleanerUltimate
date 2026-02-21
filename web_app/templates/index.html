@@ -310,6 +310,11 @@
         <div id="readerView" class="reader-view" style="display: none;"></div>
     </div>
 
+    <!-- Cursor Dinâmico Flutuante -->
+    <div id="brushCursor"
+        style="display:none; position:fixed; pointer-events:none; border-radius:50%; border:2px solid #ffffff; box-shadow:0 0 4px rgba(0,0,0,0.8); z-index:9999; transform:translate(-50%, -50%); mix-blend-mode: difference;">
+    </div>
+
     <script>
         let selectedFiles = [];
         let sessionId = null;
@@ -450,6 +455,52 @@
         let isDrawing = false;
         let currentView = 'edit'; // 'edit' ou 'reader'
 
+        // Atualiza a bolinha do pincel
+        function updateCursor(e) {
+            const cursor = document.getElementById('brushCursor');
+            if (currentMode === 'picker' || currentView !== 'edit' && currentView !== 'reader') {
+                cursor.style.display = 'none';
+                return;
+            }
+
+            // Verifica se está dentro de uma área de desenho válida (Canvas FG ou Canvas do Leitor)
+            if (e.target.tagName !== 'CANVAS' || e.target.classList.contains('canvas-bg')) {
+                cursor.style.display = 'none';
+                return;
+            }
+
+            cursor.style.display = 'block';
+            const size = document.getElementById('brushSize').value;
+            // Para dar um feedback visual real, o tamanho na tela precisa considerar o scale
+            const rect = e.target.getBoundingClientRect();
+            let scaleX = 1;
+
+            // Se for do reader, o scale reflete o redimensionamento da imagem na tela
+            // Se for do editor, o .canvas-fg também tem CSS width, então lidamos com o rect
+            if (e.target.width) {
+                scaleX = rect.width / e.target.width;
+            }
+
+            const visualSize = size * scaleX;
+
+            cursor.style.width = `${visualSize}px`;
+            cursor.style.height = `${visualSize}px`;
+            cursor.style.left = `${e.clientX}px`;
+            cursor.style.top = `${e.clientY}px`;
+        }
+
+        document.addEventListener('mousemove', updateCursor);
+        document.getElementById('brushSize').addEventListener('input', (e) => {
+            // Se mudou o range sem mover o mouse, redesenhe a bolinha se ela estiver ativa
+            const cursor = document.getElementById('brushCursor');
+            if (cursor.style.display === 'block') {
+                const size = e.target.value;
+                // Calculo grosso se não tivermos o scale perfeito agora
+                cursor.style.width = `${size}px`;
+                cursor.style.height = `${size}px`;
+            }
+        });
+
         function switchView(view) {
             currentView = view;
 
@@ -489,37 +540,49 @@
                     imgWrapper.style.position = 'relative';
                     imgWrapper.style.width = '100%';
 
-                    // Offscreen canvas para fundir Fundo(BG) + Pinturas(FG) em Alta Resolução
-                    const offscreen = document.createElement('canvas');
-                    offscreen.width = data.natWidth;
-                    offscreen.height = data.natHeight;
-                    const oCtx = offscreen.getContext('2d');
-                    oCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
-                    oCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
+                    // PERFORMANCE FIX: Em vez de desenhar offscreen e exportar pra base64 (o que gerava muito Lag),
+                    // O Reader Mode agora renderiza diretamente para um <canvas> para pintura hiper super fluida
+                    const readerCanvas = document.createElement('canvas');
+                    readerCanvas.width = data.natWidth;
+                    readerCanvas.height = data.natHeight;
+                    readerCanvas.style.width = "100%"; // CSS Auto-scale na coluna
+                    readerCanvas.style.display = "block";
+                    readerCanvas.style.cursor = currentMode === 'picker' ? 'crosshair' : 'none'; // Usa o cursor bolinha nativamente
 
-                    const img = document.createElement('img');
-                    img.src = offscreen.toDataURL("image/jpeg", 0.90);
-                    img.style.cursor = currentMode === 'picker' ? 'crosshair' : 'pointer';
+                    const rCtx = readerCanvas.getContext('2d', { willReadFrequently: true });
+                    rCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
+                    rCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
 
                     // Live Edit Proxy from Reader to Original Canvas
                     let readerDrawing = false;
                     let lastRx = 0, lastRy = 0;
 
                     const proxyDraw = (e, isDown, isMove) => {
-                        const rect = img.getBoundingClientRect();
+                        const rect = readerCanvas.getBoundingClientRect();
                         // Scale coordinates from DOM Image Width to Canvas Render Width
-                        const scaleX = data.renderWidth / rect.width;
-                        const scaleY = data.renderHeight / rect.height;
+                        const scaleX = data.natWidth / rect.width;
+                        const scaleY = data.natHeight / rect.height;
 
-                        const rx = (e.clientX - rect.left) * scaleX;
-                        const ry = (e.clientY - rect.top) * scaleY;
+                        let clientX = e.clientX;
+                        let clientY = e.clientY;
+                        if (e.touches && e.touches.length > 0) {
+                            clientX = e.touches[0].clientX;
+                            clientY = e.touches[0].clientY;
+                        }
+
+                        const rx = (clientX - rect.left) * scaleX;
+                        const ry = (clientY - rect.top) * scaleY;
+
+                        // Se for move normal (sem desenhar) só atualiza o touch pra bolinha
+                        if (e.touches && !isDown && isMove) {
+                            updateCursor({ clientX: clientX, clientY: clientY, target: readerCanvas });
+                        }
 
                         if (currentMode === 'picker' && isDown) {
-                            const fgCtx = data.fg.getContext('2d');
+                            const fgCtx = data.fg.getContext('2d', { willReadFrequently: true });
                             const pixel = fgCtx.getImageData(rx, ry, 1, 1).data;
-                            // Se bater num buraco vazio do FG, pega a cor original do BG
                             if (pixel[3] === 0) {
-                                const bgCtx = data.bg.getContext('2d');
+                                const bgCtx = data.bg.getContext('2d', { willReadFrequently: true });
                                 const bgPixel = bgCtx.getImageData(rx, ry, 1, 1).data;
                                 const hex = "#" + ("000000" + rgbToHex(bgPixel[0], bgPixel[1], bgPixel[2])).slice(-6);
                                 document.getElementById('colorPicker').value = hex;
@@ -560,26 +623,26 @@
 
                         lastRx = rx; lastRy = ry;
 
-                        // Atualiza a visualização no Reader IMEDIATAMENTE repintando o tile
-                        oCtx.clearRect(0, 0, offscreen.width, offscreen.height);
-                        oCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
-                        oCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
-                        img.src = offscreen.toDataURL("image/jpeg", 0.90);
+                        // PERFORMANCE FIX: Repinta só no canvas rápido (sem base64)
+                        rCtx.clearRect(0, 0, readerCanvas.width, readerCanvas.height);
+                        rCtx.globalCompositeOperation = 'source-over';
+                        rCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
+                        rCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
 
                         if (!isMove) readerDrawing = false;
                     };
 
-                    img.addEventListener('mousedown', e => { e.preventDefault(); proxyDraw(e, true, false); });
-                    img.addEventListener('mousemove', e => { e.preventDefault(); proxyDraw(e, false, true); });
-                    img.addEventListener('mouseup', () => readerDrawing = false);
-                    img.addEventListener('mouseleave', () => readerDrawing = false);
+                    readerCanvas.addEventListener('mousedown', e => { e.preventDefault(); proxyDraw(e, true, false); });
+                    readerCanvas.addEventListener('mousemove', e => { e.preventDefault(); proxyDraw(e, false, true); });
+                    readerCanvas.addEventListener('mouseup', () => readerDrawing = false);
+                    readerCanvas.addEventListener('mouseleave', () => readerDrawing = false);
 
                     // Toques de tela Mobile UI Helper
-                    img.addEventListener('touchstart', e => { e.preventDefault(); const touch = e.touches[0]; proxyDraw(touch, true, false); });
-                    img.addEventListener('touchmove', e => { e.preventDefault(); const touch = e.touches[0]; proxyDraw(touch, false, true); });
-                    img.addEventListener('touchend', () => readerDrawing = false);
+                    readerCanvas.addEventListener('touchstart', e => { e.preventDefault(); proxyDraw(e, true, false); }, { passive: false });
+                    readerCanvas.addEventListener('touchmove', e => { e.preventDefault(); proxyDraw(e, false, true); }, { passive: false });
+                    readerCanvas.addEventListener('touchend', () => readerDrawing = false);
 
-                    imgWrapper.appendChild(img);
+                    imgWrapper.appendChild(readerCanvas);
                     readerDiv.appendChild(imgWrapper);
                 });
             }
