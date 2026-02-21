@@ -559,9 +559,9 @@
 
                     const proxyDraw = (e, isDown, isMove) => {
                         const rect = readerCanvas.getBoundingClientRect();
-                        // Scale coordinates from DOM Image Width to Canvas Render Width
-                        const scaleX = data.natWidth / rect.width;
-                        const scaleY = data.natHeight / rect.height;
+                        // Scale coordinates from DOM Image Width to Canvas Render Width (pois o fgCtx alvo está em renderWidth)
+                        const scaleX = data.renderWidth / rect.width;
+                        const scaleY = data.renderHeight / rect.height;
 
                         let clientX = e.clientX;
                         let clientY = e.clientY;
@@ -628,8 +628,6 @@
                         rCtx.globalCompositeOperation = 'source-over';
                         rCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
                         rCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
-
-                        if (!isMove) readerDrawing = false;
                     };
 
                     readerCanvas.addEventListener('mousedown', e => { e.preventDefault(); proxyDraw(e, true, false); });
@@ -757,8 +755,6 @@
                 ctx.stroke();
 
                 lastX = x; lastY = y;
-
-                if (!isMove) isDrawing = false;
             };
 
             canvas.addEventListener('mousedown', e => draw(e, true, false));
