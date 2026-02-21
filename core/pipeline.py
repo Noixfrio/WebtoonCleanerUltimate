@@ -31,7 +31,7 @@ class MangaCleanerPipeline:
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         return cv2.morphologyEx(enhanced, cv2.MORPH_CLOSE, kernel, iterations=1)
 
-    def build_feathered_mask(self, shape: tuple, boxes: List[Dict], padding: int = 6) -> np.ndarray:
+    def build_feathered_mask(self, shape: tuple, boxes: List[Dict], padding: int = 15) -> np.ndarray:
         h, w = shape[:2]
         mask = np.zeros((h, w), dtype=np.uint8)
         tile_area = h * w
@@ -43,17 +43,20 @@ class MangaCleanerPipeline:
             
             temp = np.zeros((h, w), dtype=np.uint8)
             cv2.fillPoly(temp, [pts], 255)
-            if padding > 0:
-                k = cv2.getStructuringElement(cv2.MORPH_RECT, (padding*2+1, padding*2+1))
-                temp = cv2.dilate(temp, k)
             mask = cv2.bitwise_or(mask, temp)
         
+        # Super-Feathering: Une linhas separadas de texto dentro do mesmo balão
         if np.any(mask):
-            soft = cv2.GaussianBlur(mask, (9, 9), 0)
+            # 1. Dilatação retangular pesada para conectar frases e engolir bordas da fonte
+            k_connect = cv2.getStructuringElement(cv2.MORPH_RECT, (padding*2+1, padding*2+1))
+            mask = cv2.dilate(mask, k_connect)
+            
+            # 2. Suavização das bordas da máscara para o inpaint não criar quinas
+            soft = cv2.GaussianBlur(mask, (15, 15), 0)
             _, mask = cv2.threshold(soft, 127, 255, cv2.THRESH_BINARY)
         return mask
 
-    def process_webtoon_streaming(self, image: np.ndarray, job_id: str, threshold: float = 0.5) -> np.ndarray:
+    def process_webtoon_streaming(self, image: np.ndarray, job_id: str, threshold: float = 0.2) -> np.ndarray:
         """Architecture V20.0: Diamond Boss (Hardened Stability)."""
         raw_full = np.ascontiguousarray(image, dtype=np.uint8)
         h, w = raw_full.shape[:2]

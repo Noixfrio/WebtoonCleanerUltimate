@@ -16,8 +16,8 @@ class Settings(BaseSettings):
     INPAINT_TIMEOUT: int = 60
     INPAINT_MAX_RETRIES: int = 3
     INPAINT_BACKOFF_FACTOR: float = 2.0
-    OCR_CONFIDENCE_THRESHOLD: float = 0.5
-    OCR_LANG: str = "ch"
+    OCR_CONFIDENCE_THRESHOLD: float = 0.2
+    OCR_LANG: str = "en"
     ENABLE_GPU: bool = False
     
     # Webtoon & General Pipeline
