@@ -126,14 +126,27 @@
         .toolbar {
             display: flex;
             flex-wrap: wrap;
-            /* CRITICAL FIX: Impede que botões caiam para fora da tela */
-            gap: 10px;
-            background: #2d3748;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            gap: 15px;
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
             align-items: center;
             justify-content: center;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.4);
+            box-sizing: border-box;
+            /* Garante que padding não estoure a tela horizontalmente */
+        }
+
+        /* Respiro pra toolbar não cobrir o final da página */
+        body {
+            padding-bottom: 80px;
         }
 
         .toolbar-group {
@@ -397,7 +410,7 @@
                         <input type="range" id="brushSize" min="2" max="100" value="20">
                     </div>
                 </div>`;
-                previewDiv.insertAdjacentHTML('beforebegin', toolbarHTML);
+                document.body.insertAdjacentHTML('beforeend', toolbarHTML);
             }
 
             fileNames.forEach((name, index) => {
@@ -450,20 +463,32 @@
                 btnEdit.classList.add('active');
                 btnReader.classList.remove('active');
                 previewDiv.style.display = "block";
+
+                // Agora o toolbar fica visível nos DOIS modos
                 if (toolbarDiv) toolbarDiv.style.display = "flex";
+
                 readerDiv.style.display = "none";
                 readerDiv.innerHTML = ""; // Limpa a memória
             } else {
                 btnEdit.classList.remove('active');
                 btnReader.classList.add('active');
                 previewDiv.style.display = "none";
-                if (toolbarDiv) toolbarDiv.style.display = "none";
+
+                // Mantém a toolbar ativa pra edição enquanto lê
+                if (toolbarDiv) toolbarDiv.style.display = "flex";
+
                 readerDiv.style.display = "flex";
 
                 // Monta o visualizador combinando as edições feitas na hora
                 readerDiv.innerHTML = "";
-                window.canvases.forEach(data => {
+                window.canvases.forEach((data, index) => {
                     if (!data) return;
+
+                    // Container wrapper to maintain coordinate context
+                    const imgWrapper = document.createElement('div');
+                    imgWrapper.style.position = 'relative';
+                    imgWrapper.style.width = '100%';
+
                     // Offscreen canvas para fundir Fundo(BG) + Pinturas(FG) em Alta Resolução
                     const offscreen = document.createElement('canvas');
                     offscreen.width = data.natWidth;
@@ -473,8 +498,89 @@
                     oCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
 
                     const img = document.createElement('img');
-                    img.src = offscreen.toDataURL("image/jpeg", 0.90); // JPEG com compressão limpa para não travar navegador
-                    readerDiv.appendChild(img);
+                    img.src = offscreen.toDataURL("image/jpeg", 0.90);
+                    img.style.cursor = currentMode === 'picker' ? 'crosshair' : 'pointer';
+
+                    // Live Edit Proxy from Reader to Original Canvas
+                    let readerDrawing = false;
+                    let lastRx = 0, lastRy = 0;
+
+                    const proxyDraw = (e, isDown, isMove) => {
+                        const rect = img.getBoundingClientRect();
+                        // Scale coordinates from DOM Image Width to Canvas Render Width
+                        const scaleX = data.renderWidth / rect.width;
+                        const scaleY = data.renderHeight / rect.height;
+
+                        const rx = (e.clientX - rect.left) * scaleX;
+                        const ry = (e.clientY - rect.top) * scaleY;
+
+                        if (currentMode === 'picker' && isDown) {
+                            const fgCtx = data.fg.getContext('2d');
+                            const pixel = fgCtx.getImageData(rx, ry, 1, 1).data;
+                            // Se bater num buraco vazio do FG, pega a cor original do BG
+                            if (pixel[3] === 0) {
+                                const bgCtx = data.bg.getContext('2d');
+                                const bgPixel = bgCtx.getImageData(rx, ry, 1, 1).data;
+                                const hex = "#" + ("000000" + rgbToHex(bgPixel[0], bgPixel[1], bgPixel[2])).slice(-6);
+                                document.getElementById('colorPicker').value = hex;
+                            } else {
+                                const hex = "#" + ("000000" + rgbToHex(pixel[0], pixel[1], pixel[2])).slice(-6);
+                                document.getElementById('colorPicker').value = hex;
+                            }
+                            setMode('paint');
+                            return;
+                        }
+
+                        if (isDown) {
+                            readerDrawing = true;
+                            lastRx = rx; lastRy = ry;
+                        }
+
+                        if (!readerDrawing) return;
+
+                        const fgCtx = data.fg.getContext('2d');
+                        const size = document.getElementById('brushSize').value;
+                        const color = document.getElementById('colorPicker').value;
+
+                        fgCtx.beginPath();
+                        if (currentMode === 'restore') {
+                            fgCtx.globalCompositeOperation = 'destination-out';
+                            fgCtx.strokeStyle = 'rgba(0,0,0,1)';
+                        } else {
+                            fgCtx.globalCompositeOperation = 'source-over';
+                            fgCtx.strokeStyle = color;
+                        }
+
+                        fgCtx.lineCap = 'round';
+                        fgCtx.lineJoin = 'round';
+                        fgCtx.lineWidth = size;
+                        fgCtx.moveTo(lastRx, lastRy);
+                        fgCtx.lineTo(rx, ry);
+                        fgCtx.stroke();
+
+                        lastRx = rx; lastRy = ry;
+
+                        // Atualiza a visualização no Reader IMEDIATAMENTE repintando o tile
+                        oCtx.clearRect(0, 0, offscreen.width, offscreen.height);
+                        oCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
+                        oCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
+                        img.src = offscreen.toDataURL("image/jpeg", 0.90);
+
+                        if (!isMove) readerDrawing = false;
+                    };
+
+                    img.addEventListener('mousedown', e => { e.preventDefault(); proxyDraw(e, true, false); });
+                    img.addEventListener('mousemove', e => { e.preventDefault(); proxyDraw(e, false, true); });
+                    img.addEventListener('mouseup', () => readerDrawing = false);
+                    img.addEventListener('mouseleave', () => readerDrawing = false);
+
+                    // Toques de tela Mobile UI Helper
+                    img.addEventListener('touchstart', e => { e.preventDefault(); const touch = e.touches[0]; proxyDraw(touch, true, false); });
+                    img.addEventListener('touchmove', e => { e.preventDefault(); const touch = e.touches[0]; proxyDraw(touch, false, true); });
+                    img.addEventListener('touchend', () => readerDrawing = false);
+
+                    imgWrapper.appendChild(img);
+                    readerDiv.appendChild(imgWrapper);
                 });
             }
         }
