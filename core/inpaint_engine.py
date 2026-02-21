@@ -16,12 +16,12 @@ class InpaintEngine:
         image = np.ascontiguousarray(image, dtype=np.uint8)
         mask = np.ascontiguousarray(mask, dtype=np.uint8)
         
-        # Mask refinement: Radius 2 dilation to engolir apenas a fina borda sem borrao extra
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+        # Mask refinement: Radius dilate (3) para pegar bem a borda preta
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         mask_refined = cv2.dilate(mask, kernel, iterations=1)
 
-        # Main Inpaint: TELEA algorithm is better for structured blocks com inpaintRadius curto (2)
-        cleaned = cv2.inpaint(image, mask_refined, 2, cv2.INPAINT_TELEA)
+        # Main Inpaint: Raio longo (25) puxa o branco do balão para o centro das letras garantindo limpeza total
+        cleaned = cv2.inpaint(image, mask_refined, 25, cv2.INPAINT_TELEA)
         
         # Merge: Preserva a imagem inteira original, substituindo apenas a área do balão 
         # (onde mask > 0) pelo pedaço inpaintado
