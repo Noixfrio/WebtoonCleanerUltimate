@@ -37,6 +37,7 @@
             margin-bottom: 30px;
             background: linear-gradient(to right, #60a5fa, #a78bfa);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -141,7 +142,21 @@
             z-index: 1000;
             box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.4);
             box-sizing: border-box;
-            /* Garante que padding não estoure a tela horizontalmente */
+            min-width: 320px;
+            overflow-x: auto;
+            user-select: none;
+        }
+
+        .zoom-wrapper {
+            width: 100%;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin-top: 15px;
+            background: #000;
+            border-radius: 8px;
+            min-height: 400px;
         }
 
         /* Respiro pra toolbar não cobrir o final da página */
@@ -292,26 +307,26 @@
 
         <div class="controls">
             <button id="startBtn" class="btn-start" onclick="start()" disabled>Iniciar Processamento</button>
-            <button id="quickOpenBtn" class="btn-download" style="background-color: #3b82f6; display: inline-flex;"
-                onclick="quickOpenRawFiles()" disabled>🖌️ Abrir Direto no App do PC</button>
+            <button id="browserEditBtn" class="btn-download" style="background-color: #8b5cf6;"
+                onclick="openInHTMLEditor()" disabled>🎨 Editar no Navegador</button>
             <button id="cancelBtn" class="btn-cancel" onclick="cancel()" style="display:none">Cancelar</button>
             <button id="downloadBtn" class="btn-download" onclick="download()" style="display:none">Baixar ZIP</button>
         </div>
-
-        <div id="statusPanel" class="status-panel">
-            <div id="statusText">Aguardando...</div>
-            <progress id="progressBar" value="0" max="100"></progress>
-        </div>
-
-        <div id="viewToggler" class="view-toggler" style="display: none;">
-            <button id="btnViewEdit" class="view-btn active" onclick="switchView('edit')">✏️ Editor
-                Lado-a-Lado</button>
-            <button id="btnViewReader" class="view-btn" onclick="switchView('reader')">📱 Leitor Webtoon</button>
-        </div>
-
-        <div id="preview"></div>
-        <div id="readerView" class="reader-view" style="display: none;"></div>
     </div>
+
+    <div id="statusPanel" class="status-panel">
+        <div id="statusText">Aguardando...</div>
+        <progress id="progressBar" value="0" max="100"></progress>
+    </div>
+
+    <div id="viewToggler" class="view-toggler" style="display: none;">
+        <button id="btnViewEdit" class="view-btn active" onclick="switchView('edit')">✏️ Editor
+            Lado-a-Lado</button>
+        <button id="btnViewReader" class="view-btn" onclick="switchView('reader')">📱 Leitor Webtoon</button>
+    </div>
+
+    <div id="preview"></div>
+    <div id="readerView" class="reader-view" style="display: none;"></div>
 
     <!-- Cursor Dinâmico Flutuante -->
     <div id="brushCursor"
@@ -344,10 +359,10 @@
             if (files.length > 0) {
                 dropzone.innerText = `${files.length} arquivos carregados`;
                 startBtn.disabled = false;
-                document.getElementById('quickOpenBtn').disabled = false;
+                document.getElementById('browserEditBtn').disabled = false;
             } else {
                 startBtn.disabled = true;
-                document.getElementById('quickOpenBtn').disabled = true;
+                document.getElementById('browserEditBtn').disabled = true;
             }
         }
 
@@ -400,6 +415,107 @@
             window.location.href = `/download/${sessionId}`;
         }
 
+        async function openInHTMLEditor() {
+            if (!selectedFiles || selectedFiles.length === 0) return;
+
+            const previewDiv = document.getElementById("preview");
+            previewDiv.innerHTML = "";
+            window.canvases = [];
+
+            // Reutiliza a lógica da toolbar
+            if (!document.getElementById('mangaToolbar')) {
+                injectToolbar();
+            }
+
+            const fileNames = Array.from(selectedFiles).map(f => f.name);
+
+            // Mostra o toggler de visualização
+            document.getElementById("viewToggler").style.display = "flex";
+            switchView('edit');
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const card = document.createElement("div");
+                card.className = "preview-card";
+
+                const fileUrl = URL.createObjectURL(file);
+                // No modo editor manual, o FG começa igual ao BG (ou vazio, mas aqui vamos clonar o BG pra editar em cima)
+
+                card.innerHTML = `
+                <div class="label" style="display:flex; justify-content:space-between; width:100%;">
+                    <span>${file.name} (Local)</span>
+                    <button class="tool-btn" style="padding: 4px 8px; font-size:12px;" onclick="downloadEdited(${i}, '${file.name}')">💾 Salvar Edição</button>
+                </div>
+                <!-- Box de Edição Centralizado -->
+                <div class="zoom-wrapper">
+                     <div class="canvas-container" id="container_${i}" style="transform-origin: top center; transition: transform 0.1s ease-out; margin: 20px;">
+                        <canvas id="bg_${i}" class="canvas-bg"></canvas>
+                        <canvas id="fg_${i}" class="canvas-fg"></canvas>
+                    </div>
+                </div>`;
+                previewDiv.appendChild(card);
+
+                // Inicializa o canvas com a mesma imagem em ambos os layers (ou FG transparente se preferir)
+                // Usaremos FG transparente para o "Restore" fazer sentido depois de pintar
+                setupLocalCanvas(i, fileUrl);
+            }
+        }
+
+        function injectToolbar() {
+            const toolbarHTML = `
+            <div id="mangaToolbar" class="toolbar">
+                <div class="toolbar-group">
+                    <button class="tool-btn" id="btnPaint" onclick="setMode('paint')">🖌️ Pintar</button>
+                    <button class="tool-btn restore" id="btnRestore" onclick="setMode('restore')">🪄 Restauração</button>
+                </div>
+                <div class="toolbar-group">
+                    <input type="color" id="colorPicker" value="#ffffff">
+                    <button class="tool-btn" id="btnEyeDropper" onclick="activateEyeDropper()">💧 Pipeta</button>
+                </div>
+                <div class="toolbar-group">
+                    <label style="font-size: 12px; color: #94a3b8;">Pincel:</label>
+                    <input type="range" id="brushSize" min="2" max="100" value="20">
+                </div>
+                <div class="toolbar-group">
+                    <label style="font-size: 12px; color: #94a3b8;">🔍 Zoom:</label>
+                    <input type="range" id="zoomLevel" min="0.5" max="3" step="0.1" value="1" oninput="updateZoom()">
+                    <span id="zoomValue" style="font-size: 11px; min-width: 30px;">100%</span>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', toolbarHTML);
+        }
+
+        function setupLocalCanvas(index, src) {
+            const bgCanvas = document.getElementById(`bg_${index}`);
+            const fgCanvas = document.getElementById(`fg_${index}`);
+            const bgCtx = bgCanvas.getContext('2d', { willReadFrequently: true });
+            const fgCtx = fgCanvas.getContext('2d', { willReadFrequently: true });
+
+            const img = new Image();
+            window.canvases[index] = { bg: bgCanvas, fg: fgCanvas, renderWidth: 0, renderHeight: 0, natWidth: 0, natHeight: 0 };
+
+            img.onload = () => {
+                const MAX_WIDTH = 550;
+                let scale = 1;
+                if (img.width > MAX_WIDTH) scale = MAX_WIDTH / img.width;
+                const dw = img.width * scale;
+                const dh = img.height * scale;
+
+                bgCanvas.width = dw; bgCanvas.height = dh;
+                fgCanvas.width = dw; fgCanvas.height = dh;
+
+                window.canvases[index].renderWidth = dw;
+                window.canvases[index].renderHeight = dh;
+                window.canvases[index].natWidth = img.width;
+                window.canvases[index].natHeight = img.height;
+
+                bgCtx.drawImage(img, 0, 0, dw, dh);
+                // No editor local, começamos com o FG vazio (transparente) para que o usuário pinte por cima
+                attachDrawingEvents(fgCanvas, fgCtx, index);
+            };
+            img.src = src;
+        }
+
         function loadPreview(fileNames) {
             const previewDiv = document.getElementById("preview");
             previewDiv.innerHTML = "";
@@ -407,22 +523,7 @@
 
             // Toolbar HTML Global injection
             if (!document.getElementById('mangaToolbar')) {
-                const toolbarHTML = `
-                <div id="mangaToolbar" class="toolbar">
-                    <div class="toolbar-group">
-                        <button class="tool-btn active" id="btnPaint" onclick="setMode('paint')">🖌️ Pintar</button>
-                        <button class="tool-btn restore" id="btnRestore" onclick="setMode('restore')">🪄 Restauração</button>
-                    </div>
-                    <div class="toolbar-group">
-                        <input type="color" id="colorPicker" value="#ffffff">
-                        <button class="tool-btn" id="btnEyeDropper" onclick="activateEyeDropper()">💧 Pipeta</button>
-                    </div>
-                    <div class="toolbar-group">
-                        <label style="font-size: 12px; color: #94a3b8;">Tamanho:</label>
-                        <input type="range" id="brushSize" min="2" max="100" value="20">
-                    </div>
-                </div>`;
-                document.body.insertAdjacentHTML('beforeend', toolbarHTML);
+                injectToolbar();
             }
 
             fileNames.forEach((name, index) => {
@@ -435,22 +536,12 @@
                 card.innerHTML = `
                 <div class="label" style="display:flex; justify-content:space-between; width:100%;">
                     <span>${name}</span>
-                    <button class="tool-btn" style="padding: 4px 8px; font-size:12px; background-color: #3b82f6;" onclick="openExternalEditor(${index}, '${name}', event)">🖌️ Abrir no App do PC</button>
                     <button class="tool-btn" style="padding: 4px 8px; font-size:12px;" onclick="downloadEdited(${index}, '${name}')">💾 Salvar Edição</button>
                 </div>
-                <!-- Box Lado a Lado -->
-                <div style="display: flex; gap: 20px; width: 100%; justify-content: center; align-items: flex-start; margin-top: 15px;">
-                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                        <span style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">Manga Original</span>
-                        <img src="${beforeUrl}" style="max-width: 100%; border-radius: 8px; border: 1px solid #334155;">
-                    </div>
-                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                        <span style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">Limpo & Restaurador</span>
-                        <!-- Container Stacking Before(Bg) and After(Fg) -->
-                        <div class="canvas-container" id="container_${index}" style="margin-top: 0;">
-                            <canvas id="bg_${index}" class="canvas-bg"></canvas>
-                            <canvas id="fg_${index}" class="canvas-fg"></canvas>
-                        </div>
+                <div class="zoom-wrapper">
+                    <div class="canvas-container" id="container_${index}" style="transform-origin: top center; transition: transform 0.1s ease-out; margin: 20px;">
+                        <canvas id="bg_${index}" class="canvas-bg"></canvas>
+                        <canvas id="fg_${index}" class="canvas-fg"></canvas>
                     </div>
                 </div>`;
 
@@ -459,17 +550,66 @@
             });
         }
 
-        let currentMode = 'paint'; // 'paint', 'restore', 'picker'
+        let currentMode = 'none'; // Começa desativado por padrão
         let isDrawing = false;
         let currentView = 'edit'; // 'edit' ou 'reader'
+
+        function updateZoom() {
+            const level = parseFloat(document.getElementById('zoomLevel').value);
+            document.getElementById('zoomValue').innerText = `${Math.round(level * 100)}%`;
+
+            document.querySelectorAll('.canvas-container').forEach(container => {
+                container.style.transform = `scale(${level})`;
+
+                // Armazena tamanho base se não existir
+                if (!container.dataset.baseWidth) {
+                    container.dataset.baseWidth = container.offsetWidth;
+                    container.dataset.baseHeight = container.offsetHeight;
+                }
+
+                const bw = parseFloat(container.dataset.baseWidth);
+                const bh = parseFloat(container.dataset.baseHeight);
+
+                // Offset necessário para o scrollbar acompanhar a escala do transform
+                const marginV = (bh * (level - 1)) / 2 + 20;
+                const marginH = (bw * (level - 1)) / 2 + 20;
+
+                container.style.margin = `${marginV}px ${marginH}px`;
+            });
+
+            // Redimensiona o reader view (se estiver ativo)
+            const readerDiv = document.getElementById("readerView");
+            if (readerDiv) {
+                readerDiv.querySelectorAll('.canvas-container').forEach(container => {
+                    container.style.transform = `scale(${level})`;
+                    if (!container.dataset.baseWidth) {
+                        container.dataset.baseWidth = container.offsetWidth;
+                        container.dataset.baseHeight = container.offsetHeight;
+                    }
+                    const bw = parseFloat(container.dataset.baseWidth);
+                    const bh = parseFloat(container.dataset.baseHeight);
+                    const marginV = (bh * (level - 1)) / 2 + 20;
+                    const marginH = (bw * (level - 1)) / 2 + 20;
+                    container.style.margin = `${marginV}px ${marginH}px`;
+                });
+            }
+        }
 
         // Atualiza a bolinha do pincel
         function updateCursor(e) {
             const cursor = document.getElementById('brushCursor');
-            if (currentMode === 'picker' || currentView !== 'edit' && currentView !== 'reader') {
+            const zoom = document.getElementById('zoomLevel') ? document.getElementById('zoomLevel').value : 1;
+
+            if (currentMode === 'none' || currentMode === 'picker' || currentView !== 'edit' && currentView !== 'reader') {
                 cursor.style.display = 'none';
                 return;
             }
+
+            // Sanitização para Touch: pega o primeiro toque se for evento de touch
+            const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : null);
+            const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : null);
+
+            if (clientX === null || clientY === null) return;
 
             // Verifica se está dentro de uma área de desenho válida (Canvas FG ou Canvas do Leitor)
             if (e.target.tagName !== 'CANVAS' || e.target.classList.contains('canvas-bg')) {
@@ -479,12 +619,9 @@
 
             cursor.style.display = 'block';
             const size = document.getElementById('brushSize').value;
-            // Para dar um feedback visual real, o tamanho na tela precisa considerar o scale
             const rect = e.target.getBoundingClientRect();
             let scaleX = 1;
 
-            // Se for do reader, o scale reflete o redimensionamento da imagem na tela
-            // Se for do editor, o .canvas-fg também tem CSS width, então lidamos com o rect
             if (e.target.width) {
                 scaleX = rect.width / e.target.width;
             }
@@ -493,8 +630,8 @@
 
             cursor.style.width = `${visualSize}px`;
             cursor.style.height = `${visualSize}px`;
-            cursor.style.left = `${e.clientX}px`;
-            cursor.style.top = `${e.clientY}px`;
+            cursor.style.left = `${clientX}px`;
+            cursor.style.top = `${clientY}px`;
         }
 
         document.addEventListener('mousemove', updateCursor);
@@ -528,6 +665,7 @@
 
                 readerDiv.style.display = "none";
                 readerDiv.innerHTML = ""; // Limpa a memória
+                updateZoom();
             } else {
                 btnEdit.classList.remove('active');
                 btnReader.classList.add('active');
@@ -543,10 +681,15 @@
                 window.canvases.forEach((data, index) => {
                     if (!data) return;
 
-                    // Container wrapper to maintain coordinate context
+                    // Container wrapper with same class for Zoom consistency
                     const imgWrapper = document.createElement('div');
+                    imgWrapper.className = 'canvas-container';
                     imgWrapper.style.position = 'relative';
-                    imgWrapper.style.width = '100%';
+                    imgWrapper.style.width = '100vw'; // Largura total no leitor
+                    imgWrapper.style.maxWidth = '100%';
+                    imgWrapper.style.transformOrigin = 'top center';
+                    imgWrapper.style.display = 'block';
+                    imgWrapper.style.overflow = 'visible';
 
                     // PERFORMANCE FIX: Em vez de desenhar offscreen e exportar pra base64 (o que gerava muito Lag),
                     // O Reader Mode agora renderiza diretamente para um <canvas> para pintura hiper super fluida
@@ -584,11 +727,14 @@
                         }
 
                         const rx = (clientX - rect.left) * scaleX;
-                        const ry = (clientY - rect.top) * scaleY;
+                        if (currentMode === 'none') {
+                            readerDrawing = false;
+                            return;
+                        }
 
                         // Se for move normal (sem desenhar) só atualiza o touch pra bolinha
-                        if (e.touches && !isDown && isMove) {
-                            updateCursor({ clientX: clientX, clientY: clientY, target: readerCanvas });
+                        if ((e.touches || isMove) && !isDown) {
+                            updateCursor(e);
                         }
 
                         if (currentMode === 'picker' && isDown) {
@@ -656,6 +802,7 @@
                     imgWrapper.appendChild(readerCanvas);
                     readerDiv.appendChild(imgWrapper);
                 });
+                updateZoom();
             }
         }
 
@@ -729,31 +876,31 @@
             let lastX = 0, lastY = 0;
 
             const draw = (e, isDown, isMove) => {
+                // Previne scroll e pinch-zoom nativo do browser enquanto pinta
+                if (isDown || isMove) e.preventDefault();
+
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
                 const scaleY = canvas.height / rect.height;
 
-                let clientX = e.clientX;
-                let clientY = e.clientY;
-                if (e.touches && e.touches.length > 0) {
-                    clientX = e.touches[0].clientX;
-                    clientY = e.touches[0].clientY;
-                }
+                let clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+                let clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
 
                 const x = (clientX - rect.left) * scaleX;
                 const y = (clientY - rect.top) * scaleY;
 
+                if (currentMode === 'none') {
+                    isDrawing = false;
+                    return;
+                }
+
                 if (currentMode === 'picker' && isDown) {
                     let pixel = ctx.getImageData(x, y, 1, 1).data;
-
-                    // Se estiver clicando num lugar vazio do Canvas de Edição, 
-                    // extrair pixel da imagem Original de Background
                     if (pixel[3] === 0) {
                         const bgCanvas = window.canvases[index].bg;
                         const bgCtx = bgCanvas.getContext('2d', { willReadFrequently: true });
                         pixel = bgCtx.getImageData(x, y, 1, 1).data;
                     }
-
                     const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
                     document.getElementById('colorPicker').value = hex;
                     setMode('paint');
@@ -772,11 +919,9 @@
 
                 ctx.beginPath();
                 if (currentMode === 'restore') {
-                    // MAGIC RESTORE: Erase pixels from Foreground allowing Background to show through
                     ctx.globalCompositeOperation = 'destination-out';
                     ctx.strokeStyle = 'rgba(0,0,0,1)';
                 } else {
-                    // PAINT
                     ctx.globalCompositeOperation = 'source-over';
                     ctx.strokeStyle = color;
                 }
@@ -790,12 +935,20 @@
                 ctx.stroke();
 
                 lastX = x; lastY = y;
+
+                // Sync cursor visual
+                updateCursor(e);
             };
 
             canvas.addEventListener('mousedown', e => draw(e, true, false));
             canvas.addEventListener('mousemove', e => draw(e, false, true));
             canvas.addEventListener('mouseup', () => isDrawing = false);
             canvas.addEventListener('mouseleave', () => isDrawing = false);
+
+            // Suporte a Toque (Mobile)
+            canvas.addEventListener('touchstart', e => draw(e, true, false), { passive: false });
+            canvas.addEventListener('touchmove', e => draw(e, false, true), { passive: false });
+            canvas.addEventListener('touchend', () => isDrawing = false);
         }
 
         function rgbToHex(r, g, b) {
@@ -822,92 +975,11 @@
         }
 
         async function openExternalEditor(index, fileName, event) {
-            const btn = event.target;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '⏳ Abrindo...';
-            btn.disabled = true;
-
-            try {
-                const data = window.canvases[index];
-                const offscreen = document.createElement('canvas');
-                offscreen.width = data.natWidth;
-                offscreen.height = data.natHeight;
-                const oCtx = offscreen.getContext('2d');
-                oCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
-                oCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
-
-                const dataUrl = offscreen.toDataURL("image/png");
-
-                const response = await fetch('/open-editor', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        image_base64: dataUrl,
-                        filename: fileName
-                    })
-                });
-
-                const result = await response.json();
-                if (result.error) throw new Error(result.error);
-
-                btn.innerHTML = '✅ Aberto!';
-            } catch (err) {
-                console.error(err);
-                btn.innerHTML = '❌ Erro';
-                alert("Falha ao abrir editor externo.\\nVerifique os logs do servidor.\\n\\nMensagem: " + err.message);
-            }
-
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }, 3000);
+            // Removido por solicitação do usuário
         }
 
         async function quickOpenRawFiles() {
-            if (!selectedFiles || selectedFiles.length === 0) return;
-
-            const btn = document.getElementById('quickOpenBtn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '⏳ Abrindo...';
-            btn.disabled = true;
-
-            try {
-                // Abriremos o primeiro arquivo da fila selecionada como ação rápida
-                const file = selectedFiles[0];
-                const reader = new FileReader();
-
-                reader.readAsDataURL(file);
-                reader.onload = async () => {
-                    const dataUrl = reader.result;
-
-                    const response = await fetch('/open-editor', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            image_base64: dataUrl,
-                            filename: "raw_" + file.name
-                        })
-                    });
-
-                    const result = await response.json();
-                    if (result.error) throw new Error(result.error);
-
-                    btn.innerHTML = '✅ Aberto!';
-                    setTimeout(() => {
-                        btn.innerHTML = originalText;
-                        btn.disabled = false;
-                    }, 3000);
-                };
-            } catch (err) {
-                console.error(err);
-                btn.innerHTML = '❌ Erro';
-                alert("Falha!\\n" + err.message);
-
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }, 3000);
-            }
+            // Removido por solicitação do usuário
         }
     </script>
 
