@@ -23,13 +23,21 @@ class MangaCleanerPipeline:
         if DEBUG_MODE: Path(DEBUG_DIR).mkdir(exist_ok=True)
 
     def _preprocess_for_ocr(self, tile: np.ndarray) -> np.ndarray:
-        # V20.0 Stability: Standard CLAHE + Morph for robust detection (prevents massive false masks)
+        # Córtex Otimizado: Solução definitiva para fontes coloridas em fundos claros
         img = np.ascontiguousarray(tile, dtype=np.uint8)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8, 8))
-        enhanced = clahe.apply(gray)
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        return cv2.morphologyEx(enhanced, cv2.MORPH_CLOSE, kernel, iterations=1)
+        
+        # Blur Mediano arranca ruídos sem estragar bordas de letras finas
+        blurred = cv2.medianBlur(gray, 3)
+        
+        # Adaptive Threshold com kernel Gigante (51px) para pegar centros de letras gordas e fontes azuis
+        thresh = cv2.adaptiveThreshold(
+            blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+            cv2.THRESH_BINARY_INV, 51, 15
+        )
+        
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+        return cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=1)
 
     def build_feathered_mask(self, shape: tuple, boxes: List[Dict], padding: int = 15) -> np.ndarray:
         h, w = shape[:2]
