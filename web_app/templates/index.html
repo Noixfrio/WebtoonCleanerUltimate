@@ -589,10 +589,10 @@
                             if (pixel[3] === 0) {
                                 const bgCtx = data.bg.getContext('2d', { willReadFrequently: true });
                                 const bgPixel = bgCtx.getImageData(rx, ry, 1, 1).data;
-                                const hex = "#" + ("000000" + rgbToHex(bgPixel[0], bgPixel[1], bgPixel[2])).slice(-6);
+                                const hex = rgbToHex(bgPixel[0], bgPixel[1], bgPixel[2]);
                                 document.getElementById('colorPicker').value = hex;
                             } else {
-                                const hex = "#" + ("000000" + rgbToHex(pixel[0], pixel[1], pixel[2])).slice(-6);
+                                const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
                                 document.getElementById('colorPicker').value = hex;
                             }
                             setMode('paint');
@@ -746,7 +746,7 @@
                         pixel = bgCtx.getImageData(x, y, 1, 1).data;
                     }
 
-                    const hex = "#" + ("000000" + rgbToHex(pixel[0], pixel[1], pixel[2])).slice(-6);
+                    const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
                     document.getElementById('colorPicker').value = hex;
                     setMode('paint');
                     return;
@@ -791,7 +791,7 @@
         }
 
         function rgbToHex(r, g, b) {
-            return (r << 16) | (g << 8) | b;
+            return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
         }
 
         function downloadEdited(index, fileName) {
