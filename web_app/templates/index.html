@@ -722,11 +722,30 @@
 
             const draw = (e, isDown, isMove) => {
                 const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+
+                let clientX = e.clientX;
+                let clientY = e.clientY;
+                if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                }
+
+                const x = (clientX - rect.left) * scaleX;
+                const y = (clientY - rect.top) * scaleY;
 
                 if (currentMode === 'picker' && isDown) {
-                    const pixel = ctx.getImageData(x, y, 1, 1).data;
+                    let pixel = ctx.getImageData(x, y, 1, 1).data;
+
+                    // Se estiver clicando num lugar vazio do Canvas de Edição, 
+                    // extrair pixel da imagem Original de Background
+                    if (pixel[3] === 0) {
+                        const bgCanvas = window.canvases[index].bg;
+                        const bgCtx = bgCanvas.getContext('2d', { willReadFrequently: true });
+                        pixel = bgCtx.getImageData(x, y, 1, 1).data;
+                    }
+
                     const hex = "#" + ("000000" + rgbToHex(pixel[0], pixel[1], pixel[2])).slice(-6);
                     document.getElementById('colorPicker').value = hex;
                     setMode('paint');
