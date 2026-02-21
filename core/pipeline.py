@@ -79,8 +79,8 @@ class MangaCleanerPipeline:
             boxes = [{"box": [[float(p_val[0]), float(p_val[1])] for p_val in b]} for (b, t, p) in results if p >= threshold]
             
             if boxes:
-                # Diminuindo padding para não vazar a borda preta dos balões
-                mask = self.build_feathered_mask(tile.shape, boxes, padding=3)
+                # Aumentando o padding de 3 para 8 para garantir que a máscara engula os contornos das letras e apague tudo.
+                mask = self.build_feathered_mask(tile.shape, boxes, padding=8)
                 if DEBUG_MODE:
                     cv2.imwrite(f"{DEBUG_DIR}/{job_id}_t{y_start}_mask.png", mask)
                 # Usando o core InpaintEngine nativo com NS e injeção de ruído para preencher o balão corretamente
