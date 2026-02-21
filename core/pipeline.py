@@ -23,21 +23,14 @@ class MangaCleanerPipeline:
         if DEBUG_MODE: Path(DEBUG_DIR).mkdir(exist_ok=True)
 
     def _preprocess_for_ocr(self, tile: np.ndarray) -> np.ndarray:
-        # Córtex Otimizado: Solução definitiva para fontes coloridas em fundos claros
+        # EasyOCR (CRAFT) precisa de imagens naturais para funcionar bem.
+        # Binarizar ou Inverter a imagem destrói a detecção neural!
         img = np.ascontiguousarray(tile, dtype=np.uint8)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
-        # Blur Mediano arranca ruídos sem estragar bordas de letras finas
-        blurred = cv2.medianBlur(gray, 3)
-        
-        # Adaptive Threshold com kernel Gigante (51px) para pegar centros de letras gordas e fontes azuis
-        thresh = cv2.adaptiveThreshold(
-            blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-            cv2.THRESH_BINARY_INV, 51, 15
-        )
-        
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-        return cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=1)
+        # Apenas um CLAHE leve para dar contraste nas letras claras
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        return clahe.apply(gray)
 
     def build_feathered_mask(self, shape: tuple, boxes: List[Dict], padding: int = 15) -> np.ndarray:
         h, w = shape[:2]
@@ -56,12 +49,13 @@ class MangaCleanerPipeline:
         # Super-Feathering: Une linhas separadas de texto dentro do mesmo balão
         if np.any(mask):
             # 1. Dilatação retangular pesada para conectar frases e engolir bordas da fonte
-            k_connect = cv2.getStructuringElement(cv2.MORPH_RECT, (padding*2+1, padding*2+1))
+            k_connect = cv2.getStructuringElement(cv2.MORPH_RECT, (padding*3, padding*3))
             mask = cv2.dilate(mask, k_connect)
             
-            # 2. Suavização das bordas da máscara para o inpaint não criar quinas
-            soft = cv2.GaussianBlur(mask, (15, 15), 0)
-            _, mask = cv2.threshold(soft, 127, 255, cv2.THRESH_BINARY)
+            # 2. Suavização extrema das bordas da máscara para espalhar a zona de branco puro
+            soft = cv2.GaussianBlur(mask, (21, 21), 0)
+            # Threshold agressivo (baixo) pega a "aura" do blur e transforma em máscara sólida
+            _, mask = cv2.threshold(soft, 30, 255, cv2.THRESH_BINARY)
         return mask
 
     def process_webtoon_streaming(self, image: np.ndarray, job_id: str, threshold: float = 0.2) -> np.ndarray:
