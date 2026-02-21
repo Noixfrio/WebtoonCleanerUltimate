@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-multipart
+pydantic-settings
+psutil
+opencv-python
+numpy
+paddleocr
+paddlepaddle
+requests
+werkzeug
+pytest
+slowapi
+easyocr

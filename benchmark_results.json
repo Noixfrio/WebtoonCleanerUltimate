@@ -1,0 +1,8 @@
+{
+  "runs": 50,
+  "avg_total_latency_ms": 44.52,
+  "std_dev_latency_ms": 7.68,
+  "avg_detector_latency_ms": 50,
+  "avg_inpaint_latency_ms": 100,
+  "peak_memory_mb": 105.79
+}
