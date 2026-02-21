@@ -292,8 +292,8 @@
 
         <div class="controls">
             <button id="startBtn" class="btn-start" onclick="start()" disabled>Iniciar Processamento</button>
-            <button id="quickOpenBtn" class="btn-download" style="display:none; background-color: #3b82f6;"
-                onclick="quickOpenRawFiles()">🖌️ Abrir Direto no App do PC</button>
+            <button id="quickOpenBtn" class="btn-download" style="background-color: #3b82f6; display: inline-flex;"
+                onclick="quickOpenRawFiles()" disabled>🖌️ Abrir Direto no App do PC</button>
             <button id="cancelBtn" class="btn-cancel" onclick="cancel()" style="display:none">Cancelar</button>
             <button id="downloadBtn" class="btn-download" onclick="download()" style="display:none">Baixar ZIP</button>
         </div>
@@ -304,7 +304,8 @@
         </div>
 
         <div id="viewToggler" class="view-toggler" style="display: none;">
-            <button id="btnViewEdit" class="view-btn active" onclick="switchView('edit')">✏️ Editor Lado-a-Lado</button>
+            <button id="btnViewEdit" class="view-btn active" onclick="switchView('edit')">✏️ Editor
+                Lado-a-Lado</button>
             <button id="btnViewReader" class="view-btn" onclick="switchView('reader')">📱 Leitor Webtoon</button>
         </div>
 
@@ -343,9 +344,10 @@
             if (files.length > 0) {
                 dropzone.innerText = `${files.length} arquivos carregados`;
                 startBtn.disabled = false;
-                document.getElementById('quickOpenBtn').style.display = 'inline-flex';
+                document.getElementById('quickOpenBtn').disabled = false;
             } else {
-                document.getElementById('quickOpenBtn').style.display = 'none';
+                startBtn.disabled = true;
+                document.getElementById('quickOpenBtn').disabled = true;
             }
         }
 
