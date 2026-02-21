@@ -428,6 +428,7 @@
                 card.innerHTML = `
                 <div class="label" style="display:flex; justify-content:space-between; width:100%;">
                     <span>${name}</span>
+                    <button class="tool-btn" style="padding: 4px 8px; font-size:12px; background-color: #3b82f6;" onclick="openExternalEditor(${index}, '${name}', event)">🖌️ Abrir no App do PC</button>
                     <button class="tool-btn" style="padding: 4px 8px; font-size:12px;" onclick="downloadEdited(${index}, '${name}')">💾 Salvar Edição</button>
                 </div>
                 <!-- Box Lado a Lado -->
@@ -811,6 +812,48 @@
             link.download = "edited_" + fileName;
             link.href = offscreen.toDataURL("image/png");
             link.click();
+        }
+
+        async function openExternalEditor(index, fileName, event) {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Abrindo...';
+            btn.disabled = true;
+
+            try {
+                const data = window.canvases[index];
+                const offscreen = document.createElement('canvas');
+                offscreen.width = data.natWidth;
+                offscreen.height = data.natHeight;
+                const oCtx = offscreen.getContext('2d');
+                oCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
+                oCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
+
+                const dataUrl = offscreen.toDataURL("image/png");
+
+                const response = await fetch('/open-editor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image_base64: dataUrl,
+                        filename: fileName
+                    })
+                });
+
+                const result = await response.json();
+                if (result.error) throw new Error(result.error);
+
+                btn.innerHTML = '✅ Aberto!';
+            } catch (err) {
+                console.error(err);
+                btn.innerHTML = '❌ Erro';
+                alert("Falha ao abrir editor externo.\\nVerifique os logs do servidor.\\n\\nMensagem: " + err.message);
+            }
+
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }, 3000);
         }
     </script>
 

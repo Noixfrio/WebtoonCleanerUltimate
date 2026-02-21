@@ -10,6 +10,8 @@ import numpy as np
 import cv2
 import time
 import logging
+import subprocess
+import base64
 
 from fastapi import FastAPI, UploadFile, File, WebSocket, BackgroundTasks, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
@@ -153,3 +155,40 @@ def download_zip(session: str):
 @app.get("/health")
 def health():
     return {"status": "ultimate_active"}
+
+@app.post("/open-editor")
+async def open_in_editor(request: Request):
+    """
+    Export the current unified canvas rendering to a local file
+    and trigger the OS default image editor.
+    """
+    try:
+        data = await request.json()
+        image_data = data.get("image_base64")
+        if not image_data:
+            return JSONResponse(status_code=400, content={"error": "No image data provided"})
+
+        # Extract base64 encoded data
+        header, encoded = image_data.split(",", 1)
+        file_bytes = base64.b64decode(encoded)
+        
+        # Save explicitly to processed dir so it stays with the project
+        filename = data.get("filename", "temp_bridge.png")
+        temp_path = os.path.abspath(os.path.join(OUTPUT_DIR, f"bridge_{filename}"))
+        
+        with open(temp_path, "wb") as f:
+            f.write(file_bytes)
+        
+        # Dispatch to OS
+        import platform
+        if platform.system() == 'Windows':
+            os.startfile(temp_path)
+        elif platform.system() == 'Darwin':
+            subprocess.run(['open', temp_path], check=False)
+        else:
+            subprocess.run(['xdg-open', temp_path], check=False)
+            
+        return {"status": "opened", "path": temp_path}
+    except Exception as e:
+        logger.exception("Error opening external editor bridge")
+        return JSONResponse(status_code=500, content={"error": str(e)})
