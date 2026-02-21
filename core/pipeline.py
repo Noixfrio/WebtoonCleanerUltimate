@@ -48,14 +48,9 @@ class MangaCleanerPipeline:
         
         # Super-Feathering: Une linhas separadas de texto dentro do mesmo balão
         if np.any(mask):
-            # 1. Dilatação retangular pesada para conectar frases e engolir bordas da fonte
-            k_connect = cv2.getStructuringElement(cv2.MORPH_RECT, (padding*3, padding*3))
+            # Apenas uma dilatação suave para engolir anti-aliasing e imperfeições da fonte OCR
+            k_connect = cv2.getStructuringElement(cv2.MORPH_RECT, (padding, padding))
             mask = cv2.dilate(mask, k_connect)
-            
-            # 2. Suavização extrema das bordas da máscara para espalhar a zona de branco puro
-            soft = cv2.GaussianBlur(mask, (21, 21), 0)
-            # Threshold agressivo (baixo) pega a "aura" do blur e transforma em máscara sólida
-            _, mask = cv2.threshold(soft, 30, 255, cv2.THRESH_BINARY)
         return mask
 
     def process_webtoon_streaming(self, image: np.ndarray, job_id: str, threshold: float = 0.2) -> np.ndarray:
@@ -84,8 +79,8 @@ class MangaCleanerPipeline:
             boxes = [{"box": [[float(p_val[0]), float(p_val[1])] for p_val in b]} for (b, t, p) in results if p >= threshold]
             
             if boxes:
-                # Aumentando o padding de 3 para 8 para garantir que a máscara engula os contornos das letras e apague tudo.
-                mask = self.build_feathered_mask(tile.shape, boxes, padding=8)
+                # Usando um padding moderado (5) para não sangrar pelas bordas do balão
+                mask = self.build_feathered_mask(tile.shape, boxes, padding=5)
                 if DEBUG_MODE:
                     cv2.imwrite(f"{DEBUG_DIR}/{job_id}_t{y_start}_mask.png", mask)
                 # Usando o core InpaintEngine nativo com NS e injeção de ruído para preencher o balão corretamente

@@ -20,12 +20,13 @@ class InpaintEngine:
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         mask_refined = cv2.dilate(mask, kernel, iterations=1)
 
-        # Em vez de tentar "advivinhar" o fundo com o OpenCV Inpaint (que borra tudo), 
-        # nós injetamos Branco Puro (255, 255, 255) nos pixels onde a máscara de texto existir
-        cleaned = image.copy()
-        cleaned[mask_refined > 0] = [255, 255, 255]
+        # Retorna para o Inpaint clássico e inteligente do OpenCV.
+        # Ele reconstrói a pintura do fundo naturalmente (se o fundo do balão for branco,
+        # o texto some e vira branco; se o fundo tiver degradê ou arte, ele reconstrói a textura!)
+        # Raio 5 ajuda a puxar a cor correta de fora da letra sem borrar milhas para longe
+        cleaned = cv2.inpaint(image, mask_refined, 5, cv2.INPAINT_TELEA)
         
-        # Merge de segurança (redimensionar e alinhar memória)
+        # Merge de segurança: preserve inpaint apenas onde havia máscara
         final = np.where(mask_refined[..., None] > 0, cleaned, image)
         
         return final
