@@ -292,6 +292,8 @@
 
         <div class="controls">
             <button id="startBtn" class="btn-start" onclick="start()" disabled>Iniciar Processamento</button>
+            <button id="quickOpenBtn" class="btn-download" style="display:none; background-color: #3b82f6;"
+                onclick="quickOpenRawFiles()">🖌️ Abrir Direto no App do PC</button>
             <button id="cancelBtn" class="btn-cancel" onclick="cancel()" style="display:none">Cancelar</button>
             <button id="downloadBtn" class="btn-download" onclick="download()" style="display:none">Baixar ZIP</button>
         </div>
@@ -341,6 +343,9 @@
             if (files.length > 0) {
                 dropzone.innerText = `${files.length} arquivos carregados`;
                 startBtn.disabled = false;
+                document.getElementById('quickOpenBtn').style.display = 'inline-flex';
+            } else {
+                document.getElementById('quickOpenBtn').style.display = 'none';
             }
         }
 
@@ -854,6 +859,53 @@
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             }, 3000);
+        }
+
+        async function quickOpenRawFiles() {
+            if (!selectedFiles || selectedFiles.length === 0) return;
+
+            const btn = document.getElementById('quickOpenBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Abrindo...';
+            btn.disabled = true;
+
+            try {
+                // Abriremos o primeiro arquivo da fila selecionada como ação rápida
+                const file = selectedFiles[0];
+                const reader = new FileReader();
+
+                reader.readAsDataURL(file);
+                reader.onload = async () => {
+                    const dataUrl = reader.result;
+
+                    const response = await fetch('/open-editor', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            image_base64: dataUrl,
+                            filename: "raw_" + file.name
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (result.error) throw new Error(result.error);
+
+                    btn.innerHTML = '✅ Aberto!';
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }, 3000);
+                };
+            } catch (err) {
+                console.error(err);
+                btn.innerHTML = '❌ Erro';
+                alert("Falha!\\n" + err.message);
+
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 3000);
+            }
         }
     </script>
 
