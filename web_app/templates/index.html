@@ -382,6 +382,16 @@
 
     <div id="statusPanel" class="status-panel">
         <div id="statusText">Aguardando...</div>
+        <div style="margin-left: auto; display: flex; gap: 15px; align-items: center;">
+            <a href="https://github.com/Noixfrio/WebtoonCleanerUltimate/issues" target="_blank"
+                style="color: #94a3b8; font-size: 11px; text-decoration: none; display: flex; align-items: center; gap: 4px;">
+                🐞 Reportar Bug / Sugestão
+            </a>
+            <button id="cancelBtn" class="btn-download" onclick="cancel()"
+                style="display:none; background-color: #475569; padding: 6px 12px; font-size: 12px;">Cancelar</button>
+            <button id="downloadBtn" class="btn-download" onclick="download()" style="display:none">Baixar Todos
+                (ZIP)</button>
+        </div>
         <progress id="progressBar" value="0" max="100"></progress>
     </div>
 

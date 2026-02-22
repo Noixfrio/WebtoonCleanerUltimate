@@ -57,5 +57,12 @@ Sempre que o desenvolvedor lançar uma melhoria, basta rodar o script `update_pr
 
 ---
 
+## 🐛 Reporte de Bugs e Sugestões
+Encontrou algum problema ou tem uma ideia para melhorar a IA? Sua ajuda é fundamental!
+*   **Issues do GitHub:** Abra uma [Issue](https://github.com/Noixfrio/WebtoonCleanerUltimate/issues) com o print do erro.
+*   **Melhoria da IA:** Se a limpeza falhou em alguma imagem, envie a imagem original para análise.
+
+---
+
 ## 📄 Licença
 Distribuído sob a licença **MIT**. Veja o arquivo `LICENSE` para detalhes.
