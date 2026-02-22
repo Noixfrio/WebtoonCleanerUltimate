@@ -657,7 +657,9 @@
                 const zip = new JSZip();
 
                 for (let i = 0; i < window.canvases.length; i++) {
-                    const fileName = Array.from(selectedFiles)[i].name;
+                    const data = window.canvases[i];
+                    if (!data) continue;
+                    const fileName = data.fileName || `imagem_${i}.png`;
                     const blob = await getEditedBlob(i);
                     zip.file("editado_" + fileName, blob);
                 }
@@ -730,11 +732,11 @@
                 </div>`;
                 previewDiv.appendChild(card);
 
-                // Inicializa o canvas com a mesma imagem em ambos os layers (ou FG transparente se preferir)
                 // Usaremos FG transparente para o "Restore" fazer sentido depois de pintar
-                setupLocalCanvas(i, fileUrl);
+                setupLocalCanvas(i, file, fileUrl);
             }
         }
+    }
 
         function injectToolbar() {
             const toolbarHTML = `
@@ -797,7 +799,7 @@
             if (typeof initFontSystem === 'function') initFontSystem();
         }
 
-        function setupLocalCanvas(index, src) {
+        function setupLocalCanvas(index, file, src) {
             const bgCanvas = document.getElementById(`bg_${index}`);
             const fgCanvas = document.getElementById(`fg_${index}`);
             const bgCtx = bgCanvas.getContext('2d', { willReadFrequently: true });
@@ -806,6 +808,8 @@
             window.canvases[index] = {
                 bg: bgCanvas,
                 fg: fgCanvas,
+                fileName: file.name || "imagem.png",
+                sourceImg: null, // Será guardado no onload
                 paths: [], // Novo: Armazena pinceladas (limpeza/pintura)
                 texts: [],
                 selectedText: null,
@@ -832,6 +836,7 @@
                 window.canvases[index].renderHeight = dh;
                 window.canvases[index].natWidth = img.width;
                 window.canvases[index].natHeight = img.height;
+                window.canvases[index].sourceImg = img;
 
                 bgCtx.drawImage(img, 0, 0, dw, dh);
                 refCtx.drawImage(img, 0, 0, dw, dh);
@@ -1631,6 +1636,7 @@
             window.canvases[index] = {
                 bg: bgCanvas,
                 fg: fgCanvas,
+                fileName: bgSrc.split('/').pop(), // Fallback filename from URL
                 renderWidth: 0,
                 renderHeight: 0,
                 natWidth: 0,
@@ -1659,6 +1665,7 @@
                 window.canvases[index].renderHeight = dh;
                 window.canvases[index].natWidth = bgImg.width;
                 window.canvases[index].natHeight = bgImg.height;
+                window.canvases[index].sourceImg = bgImg;
 
                 bgCtx.drawImage(bgImg, 0, 0, dw, dh);
                 refCtx.drawImage(bgImg, 0, 0, dw, dh);
@@ -2057,7 +2064,9 @@
                 const scaleX = data.natWidth / data.renderWidth;
                 const scaleY = data.natHeight / data.renderHeight;
 
-                oCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
+                // 1. Draw original high-res background
+                const bgToDraw = data.sourceImg || data.bg;
+                oCtx.drawImage(bgToDraw, 0, 0, data.natWidth, data.natHeight);
 
                 const cleanLayer = document.createElement('canvas');
                 cleanLayer.width = data.natWidth;
@@ -2088,7 +2097,7 @@
 
                 (async () => {
                     for (const t of data.texts) {
-                        await drawText(oCtx, t.x * scaleX, t.y * scaleY, t.content, t.size * scaleX, t.family, t.color);
+                        await drawText(oCtx, t.x * scaleX, t.y * scaleY, t.content, t.size * scaleX, t.family, t.color, t.maxWidth ? t.maxWidth * scaleX : null);
                     }
                     offscreen.toBlob((blob) => {
                         resolve(blob);
