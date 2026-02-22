@@ -13,6 +13,12 @@ class WebtoonFontManager:
         
         if not os.path.exists(self.custom_dir):
             os.makedirs(self.custom_dir, exist_ok=True)
+            
+        # Ensure all category directories exist to avoid mounting or scan errors
+        categories = ["dialogue", "impact", "thought", "narrator", "sfx", "romance", "digital", "custom"]
+        for cat in categories:
+            cat_path = os.path.join(self.fonts_dir, cat)
+            os.makedirs(cat_path, exist_ok=True)
 
     def _load_config(self) -> Dict:
         if not os.path.exists(self.config_path):

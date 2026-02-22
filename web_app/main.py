@@ -33,6 +33,9 @@ app = FastAPI(title="Webtoon Cleaner Ultimate")
 templates = Jinja2Templates(directory="web_app/templates")
 OUTPUT_DIR = "processed"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs("assets/fonts", exist_ok=True)
+os.makedirs("inputs", exist_ok=True)
+os.makedirs("outputs", exist_ok=True)
 
 # Mount static files for previews and processed images
 app.mount("/processed", StaticFiles(directory=OUTPUT_DIR), name="processed")
