@@ -1,0 +1,13 @@
+=== COMO BAIXAR E INSTALAR (GUIA RÁPIDO) ===
+
+1. No site do GitHub, clique no botão VERDE escrito "Code".
+2. Clique em "Download ZIP".
+3. Extraia o conteúdo do ZIP para uma pasta no seu computador.
+4. Instale o Python (baixe em python.org). 
+   IMPORTANTE: Na instalação do Python, marque a caixinha "Add Python to PATH".
+5. Clique duas vezes no arquivo "install_windows.bat" dentro da pasta extraída.
+6. Aguarde a instalação terminar.
+7. Para usar, clique duas vezes em "iniciar_servidor.bat".
+8. O seu navegador vai abrir em http://localhost:5000 pronto para usar!
+
+Dúvidas? Leia o arquivo README.md para mais detalhes.

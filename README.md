@@ -1,13 +1,22 @@
 # 🧹 Webtoon Cleaner Ultimate
 
-O **Webtoon Cleaner Ultimate** é uma ferramenta poderosa e de código aberto para limpeza de balões de fala em mangás e webtoons, equipada com inteligência artificial para reconstrução de fundos e OCR manual/automático.
+O **Webtoon Cleaner Ultimate** é uma ferramenta de IA para limpeza de mangás e webtoons que roda direto no seu computador.
+
+---
+
+## 📥 COMO BAIXAR (PASSO A PASSO)
+Se você não sabe usar o GitHub, siga estas instruções simples:
+
+1.  **Clique no Botão Verde:** No topo desta página, clique no botão que diz **"<> Code"** (cor verde).
+2.  **Baixe o ZIP:** No menu que abrir, clique na última opção: **"Download ZIP"**.
+3.  **Extraia os Arquivos:** Após baixar, abra o arquivo `.zip` e arraste a pasta para sua Área de Trabalho.
+4.  **Siga a Instalação:** Agora é só seguir os passos da seção **Windows** ou **Linux** abaixo!
+
+---
 
 ## 🚀 Como Funciona (Transparência)
-
-Este projeto foi construído com foco total na segurança e transparência. Ele roda **localmente** no seu computador.
-*   **Backend:** Python (FastAPI + OpenCV + PaddleOCR).
-*   **Frontend:** HTML5/JavaScript moderno (Canvas API).
-*   **Privacidade:** Suas imagens nunca são enviadas para servidores externos (exceto se você configurar APIs de tradução opcionais). O processamento de limpeza e texto acontece no seu próprio hardware.
+Este projeto foi construído com foco total na segurança. Ele roda **localmente**.
+*   **Privacidade:** Suas imagens nunca saem do seu PC. O processamento acontece no seu próprio hardware.
 
 ---
 
