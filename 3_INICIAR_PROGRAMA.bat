@@ -11,5 +11,6 @@ if not exist venv (
 )
 
 call venv\Scripts\activate
+start http://localhost:5000
 python -m uvicorn web_app.main:app --host 0.0.0.0 --port 5000 --reload
 pause

@@ -79,6 +79,15 @@ async def start_process(background_tasks: BackgroundTasks, files: list[UploadFil
     session_id = str(uuid.uuid4())
     session_folder = os.path.join(OUTPUT_DIR, session_id)
     os.makedirs(session_folder, exist_ok=True)
+    
+    # Save files to disk immediately to prevent FastAPI from closing the UploadFile after the request ends
+    input_paths = []
+    for f in files:
+        content = await f.read()
+        input_file_path = os.path.join(session_folder, "input_" + f.filename)
+        with open(input_file_path, "wb") as out_file:
+            out_file.write(content)
+        input_paths.append((input_file_path, f.filename))
 
     sessions[session_id] = {
         "total": len(files),
@@ -88,38 +97,37 @@ async def start_process(background_tasks: BackgroundTasks, files: list[UploadFil
         "files": [f.filename for f in files]
     }
 
-    background_tasks.add_task(process_task, files, session_id)
+    background_tasks.add_task(process_task, input_paths, session_id)
 
     return {"session": session_id}
 
-async def process_task(files, session_id):
+async def process_task(input_paths, session_id):
     session_folder = os.path.join(OUTPUT_DIR, session_id)
     
     try:
-        for file in files:
+        for file_path, filename in input_paths:
             if sessions.get(session_id, {}).get("cancel"):
                 sessions[session_id]["status"] = "cancelled"
                 logger.info(f"Session {session_id} cancelled.")
                 return
 
-            contents = await file.read()
-            np_arr = np.frombuffer(contents, np.uint8)
-            image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            image = cv2.imread(file_path, cv2.IMREAD_COLOR)
 
             if image is None:
-                logger.warning(f"Invalid image: {file.filename}")
+                logger.warning(f"Invalid image: {filename}")
                 sessions[session_id]["processed"] += 1
                 continue
 
-            # Use the streaming pipeline for Webtoon length safety
-            result = pipeline.process_webtoon_streaming(
+            # Use a thread para não bloquear o Event Loop do FastAPI (que faria o WebSocket travar em "Aguardando...")
+            result = await asyncio.to_thread(
+                pipeline.process_webtoon_streaming,
                 image, 
-                job_id=f"ws_{session_id}_{file.filename}"
+                job_id=f"ws_{session_id}_{filename}"
             )
 
             # Save preview pair
-            before_path = os.path.join(session_folder, "before_" + file.filename)
-            after_path = os.path.join(session_folder, "after_" + file.filename)
+            before_path = os.path.join(session_folder, "before_" + filename)
+            after_path = os.path.join(session_folder, "after_" + filename)
 
             cv2.imwrite(before_path, image)
             cv2.imwrite(after_path, result)
