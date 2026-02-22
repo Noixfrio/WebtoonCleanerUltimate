@@ -1,3 +1,0 @@
-FRONTEND ERROR: test
-test
----

@@ -38,6 +38,9 @@ venv.bak/
 *.log
 *.sqlite
 *.sqlite3
+frontend_errors.txt
+iopaint_pid.txt
+test_output.txt
 
 # Project specific
 processed/
@@ -48,7 +51,13 @@ benchmark/
 *.jpg
 *.jpeg
 *.zip
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
 
 # OS config
 .DS_Store
 Thumbs.db
+desktop.ini
