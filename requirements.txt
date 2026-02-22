@@ -12,3 +12,4 @@ werkzeug
 pytest
 slowapi
 easyocr
+websockets
