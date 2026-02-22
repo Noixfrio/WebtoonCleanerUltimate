@@ -12,6 +12,8 @@ import time
 import logging
 import subprocess
 import base64
+import traceback
+from pydantic import BaseModel
 
 from fastapi import FastAPI, UploadFile, File, WebSocket, BackgroundTasks, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
@@ -20,6 +22,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi import Request
 
 from core.pipeline import MangaCleanerPipeline
+from core.font_manager import WebtoonFontManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,11 +36,21 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Mount static files for previews and processed images
 app.mount("/processed", StaticFiles(directory=OUTPUT_DIR), name="processed")
+app.mount("/assets/fonts", StaticFiles(directory="assets/fonts"), name="fonts")
+app.mount("/static", StaticFiles(directory="web_app/static"), name="static")
 
 pipeline = MangaCleanerPipeline()
+font_manager = WebtoonFontManager()
 
 # In-memory session tracking
 sessions = {}
+
+class FrontendError(BaseModel):
+    message: str
+    trace: str
+
+class OCRRequest(BaseModel):
+    image: str
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -155,3 +168,66 @@ def download_zip(session: str):
 @app.get("/health")
 def health():
     return {"status": "ultimate_active"}
+
+@app.get("/api/fonts")
+def list_fonts():
+    try:
+        from core.font_manager import WebtoonFontManager
+        manager = WebtoonFontManager()
+        return manager.list_fonts()
+    except Exception as e:
+        logger.error(f"Erro ao listar fontes: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/api/log_error")
+def log_frontend_error(err: FrontendError):
+    with open("frontend_errors.txt", "a") as f:
+        f.write(f"FRONTEND ERROR: {err.message}\n{err.trace}\n---\n")
+    return {"status": "logged"}
+
+@app.post("/api/ocr_region")
+def ocr_region(req: OCRRequest):
+    try:
+        from core.detector import TextDetector
+        
+        # O base64 vem como "data:image/png;base64,iVBORw0KGgo..."
+        encoded_data = req.image.split(',')[1] if ',' in req.image else req.image
+        nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if img is None:
+            return JSONResponse(status_code=400, content={"error": "Imagem inválida para OCR"})
+
+        detector = TextDetector()
+        results = detector.detect(img, job_id="manual_ocr")
+        
+        # Concatena todos os blocos de texto encontrados
+        text_lines = [box["text"] for box in results]
+        combined_text = "\n".join(text_lines)
+
+        return {"text": combined_text}
+    except Exception as e:
+        logger.error(f"Erro no OCR Manual: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+# IMPORTAÇÃO DOS SERVIÇOS EXPERIMENTAIS (Se existirem)
+@app.post("/api/import-font")
+async def import_font(file: UploadFile = File(...)):
+    if not (file.filename.endswith(".ttf") or file.filename.endswith(".otf")):
+        return JSONResponse(status_code=400, content={"error": "Apenas .ttf e .otf são suportados"})
+    
+    # Save temp file to import
+    temp_path = os.path.join("/tmp", file.filename)
+    with open(temp_path, "wb") as f:
+        f.write(await file.read())
+    
+    try:
+        font_manager.import_font(temp_path)
+        return {"status": "success", "font": file.filename}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)

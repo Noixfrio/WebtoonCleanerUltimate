@@ -5,6 +5,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Webtoon Cleaner Ultimate</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bangers&family=Caveat&family=Comic+Neue:wght@400;700&family=Dancing+Script&family=Handlee&family=Indie+Flower&family=Patrick+Hand&family=Permanent+Marker&family=Orbitron&family=Rajdhani&family=Libre+Baskerville&display=swap"
+        rel="stylesheet">
+    <script>
+        window.onerror = function (msg, url, line, col, error) {
+            fetch('/api/log_error', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg.toString(), trace: error ? error.stack : `line ${line} col ${col}` })
+            });
+        };
+    </script>
     <style>
         :root {
             --bg: #0f172a;
@@ -148,15 +162,18 @@
         }
 
         .zoom-wrapper {
-            width: 100%;
-            overflow: auto;
             display: flex;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: flex-start;
-            margin-top: 15px;
-            background: #000;
-            border-radius: 8px;
-            min-height: 400px;
+            gap: 40px;
+            padding: 20px;
+            overflow: auto;
+            max-width: 100%;
+            height: calc(100vh - 250px);
+            background: #0f172a;
+            border-radius: 12px;
+            border: 1px solid #1e293b;
+            position: relative;
         }
 
         /* Respiro pra toolbar não cobrir o final da página */
@@ -180,22 +197,70 @@
             padding: 8px 16px;
         }
 
-        .tool-btn.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
+
+        /* Modal de Atalhos */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
         }
 
-        .tool-btn.restore {
-            background: #f97316;
-            /* Laranja conforme log */
+        .modal-content {
+            background-color: #1e293b;
+            margin: 10% auto;
+            padding: 24px;
+            border: 1px solid #334155;
+            width: 400px;
+            border-radius: 12px;
             color: white;
-            border-color: #f97316;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
         }
 
-        .tool-btn.restore.active {
-            filter: brightness(1.2);
-            box-shadow: 0 0 10px #f97316aa;
+        .shortcut-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .shortcut-key {
+            background: #334155;
+            padding: 4px 8px;
+            border-radius: 4px;
+            min-width: 40px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid #475569;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+
+        .shortcut-key.recording {
+            border-color: #ef4444;
+            background: #450a0a;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
 
         #preview {
@@ -217,11 +282,11 @@
 
         .canvas-container {
             position: relative;
-            margin-top: 15px;
             background: #000;
             border-radius: 8px;
             overflow: hidden;
             display: inline-block;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
         }
 
         .canvas-container canvas {
@@ -296,7 +361,7 @@
 </head>
 
 <body>
-
+    <!-- Header / Navbar Principal -->
     <div class="container">
         <h2>Webtoon Cleaner Ultimate</h2>
 
@@ -326,6 +391,24 @@
     </div>
 
     <div id="preview"></div>
+
+    <!-- Modal de Atalhos -->
+    <div id="shortcutModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">⌨️ Configurar Atalhos</h3>
+            <p style="font-size:12px; color:#94a3b8; margin-bottom:20px;">Clique na tecla para alterar. Pressione a nova
+                tecla no teclado.</p>
+
+            <div id="shortcutList">
+                <!-- Injetado via JS -->
+            </div>
+
+            <div style="margin-top:24px; display:flex; justify-content:flex-end; gap:10px;">
+                <button class="tool-btn" style="background:#334155;" onclick="closeShortcutModal()">Cancelar</button>
+                <button class="tool-btn" onclick="saveShortcuts()">Salvar</button>
+            </div>
+        </div>
+    </div>
     <div id="readerView" class="reader-view" style="display: none;"></div>
 
     <!-- Cursor Dinâmico Flutuante -->
@@ -334,6 +417,74 @@
     </div>
 
     <script>
+        // --- 1. Sistema de Atalhos (Inicializar ANTES de tudo) ---
+        window.defaultShortcuts = {
+            'paint': 'b',
+            'restore': 'r',
+            'text': 't',
+            'ocr': 'c',
+            'pan': 'h',
+            'picker': 'i'
+        };
+        window.userShortcuts = JSON.parse(localStorage.getItem('mangaShortcuts')) || window.defaultShortcuts;
+        window.isRecordingShortcut = null;
+
+        // Removido logic inline de fontes - agora em font-system.js
+
+        function updateSelectedTextFont() {
+            const fontEl = document.getElementById('font-name');
+            if (!fontEl) return;
+            const font = fontEl.value;
+            const canvasData = window.canvases.find(c => c && c.selectedText);
+            if (canvasData && canvasData.selectedText) {
+                canvasData.selectedText.family = font;
+                redrawFG(window.canvases.indexOf(canvasData));
+            }
+        }
+
+        function openShortcutModal() {
+            const list = document.getElementById('shortcutList');
+            if (!list) return;
+            list.innerHTML = '';
+            const labels = {
+                'paint': '🖌️ Pincel',
+                'restore': '🪄 Restauração',
+                'text': '🔤 Texto',
+                'ocr': '🔍 Copiar (OCR)',
+                'pan': '✋ Mover Image',
+                'picker': '💧 Pipeta'
+            };
+            for (let tool in window.userShortcuts) {
+                const row = document.createElement('div');
+                row.className = 'shortcut-row';
+                row.innerHTML = `
+                    <span>${labels[tool]}</span>
+                    <div class="shortcut-key" id="key-${tool}" onclick="recordShortcut('${tool}')">${window.userShortcuts[tool]}</div>
+                `;
+                list.appendChild(row);
+            }
+            document.getElementById('shortcutModal').style.display = 'block';
+        }
+
+        function closeShortcutModal() {
+            document.getElementById('shortcutModal').style.display = 'none';
+            isRecordingShortcut = null;
+        }
+
+        function recordShortcut(tool) {
+            if (window.isRecordingShortcut) {
+                document.getElementById(`key-${window.isRecordingShortcut}`).classList.remove('recording');
+            }
+            window.isRecordingShortcut = tool;
+            document.getElementById(`key-${tool}`).classList.add('recording');
+        }
+
+        function saveShortcuts() {
+            localStorage.setItem('mangaShortcuts', JSON.stringify(window.userShortcuts));
+            closeShortcutModal();
+        }
+
+        // --- 2. Estado Global ---
         let selectedFiles = [];
         let sessionId = null;
         let ws = null;
@@ -395,14 +546,87 @@
                     document.getElementById("downloadBtn").style.display = "inline-flex";
                     document.getElementById("cancelBtn").style.display = "none";
                     document.getElementById("viewToggler").style.display = "flex";
-                    switchView('edit'); // Reseta para editor nativo
                     loadPreview(info.files);
+                    switchView('edit'); // Reseta para editor nativo
                 }
                 if (info.status === "cancelled") {
                     document.getElementById("statusText").innerText = "Processo Cancelado.";
                     startBtn.disabled = false;
                 }
             };
+        }
+
+        function showInlineTextEditor(canvasContainer, textObj, scaleX, scaleY) {
+            return new Promise((resolve) => {
+                // Cria uma textarea sobreposta diretamente no container do canvas (com position relative natural)
+                const textarea = document.createElement('textarea');
+
+                // Mapeia coordenadas lógicas (Render Width) para coordendas DOM (Visual)
+                const domX = textObj.x / scaleX;
+                const domY = textObj.y / scaleY;
+                const domSize = textObj.size / scaleX;
+
+                textarea.style.position = 'absolute';
+                textarea.style.left = `${domX}px`;
+                textarea.style.top = `${domY - (domSize / 2)}px`;
+                textarea.style.width = textObj.maxWidth ? `${textObj.maxWidth / scaleX}px` : '300px';
+                textarea.style.minHeight = `${domSize * 1.5}px`;
+                textarea.style.height = 'auto'; // Auto ajustável enquanto digita
+
+                textarea.style.background = 'rgba(0, 0, 0, 0.4)'; // Fundo semi-transparente para ver a imagem
+                textarea.style.color = textObj.color;
+
+                const fontFam = textObj.family || 'Inter, sans-serif';
+                textarea.style.font = `bold ${domSize}px ${fontFam.includes(',') ? fontFam : `"${fontFam}", sans-serif`}`;
+                textarea.style.textAlign = 'center';
+                textarea.style.border = '2px dashed #fbbf24';
+                textarea.style.padding = '0';
+                textarea.style.margin = '0';
+                textarea.style.overflow = 'hidden';
+                textarea.style.resize = 'horizontal'; // Permite alterar a largura
+                textarea.style.outline = 'none';
+                textarea.style.zIndex = '1000';
+                textarea.style.lineHeight = '1.2';
+                textarea.style.whiteSpace = 'pre-wrap';
+                textarea.style.boxSizing = 'border-box';
+
+                textarea.value = textObj.content || '';
+
+                canvasContainer.style.position = 'relative'; // Garante que o container ancora a textarea
+                canvasContainer.appendChild(textarea);
+
+                // Ajusta a altura baseado no conteúdo inicial
+                textarea.style.height = textarea.scrollHeight + 'px';
+
+                textarea.focus();
+
+                // Mantém a altura atualizada enquanto o usuário digita
+                textarea.addEventListener('input', () => {
+                    textarea.style.height = 'auto';
+                    textarea.style.height = textarea.scrollHeight + 'px';
+                });
+
+                // Finaliza edição ao sair do foco
+                const cleanup = () => {
+                    const finalContent = textarea.value.trim();
+                    const finalMaxWidth = parseFloat(textarea.style.width) * scaleX; // Converte de volta pra Render Width
+                    textarea.remove();
+                    resolve(finalContent ? { content: finalContent, maxWidth: finalMaxWidth } : null);
+                };
+
+                textarea.addEventListener('blur', cleanup);
+                textarea.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        textarea.remove();
+                        resolve(null);
+                    }
+                });
+            });
+        }
+
+        async function uploadFiles() {
+            if (!sessionId) return;
+            await fetch(`/cancel/${sessionId}`, { method: "POST" });
         }
 
         async function cancel() {
@@ -426,6 +650,7 @@
             if (!document.getElementById('mangaToolbar')) {
                 injectToolbar();
             }
+            // FontSystem inicializa via DOMContentLoaded
 
             const fileNames = Array.from(selectedFiles).map(f => f.name);
 
@@ -447,11 +672,23 @@
                     <button class="tool-btn" style="padding: 4px 8px; font-size:12px;" onclick="downloadEdited(${i}, '${file.name}')">💾 Salvar Edição</button>
                 </div>
                 <!-- Box de Edição Centralizado -->
-                <div class="zoom-wrapper">
-                     <div class="canvas-container" id="container_${i}" style="transform-origin: top center; transition: transform 0.1s ease-out; margin: 20px;">
-                        <canvas id="bg_${i}" class="canvas-bg"></canvas>
-                        <canvas id="fg_${i}" class="canvas-fg"></canvas>
-                    </div>
+                <div class="zoom-wrapper" style="display:flex; justify-content:center; gap:40px; padding: 20px 0;">
+                     <!-- Lado Original -->
+                     <div style="display:flex; flex-direction:column; align-items:center;">
+                        <div style="font-size:12px; font-weight:bold; color:#94a3b8; margin-bottom:5px;">ORIGINAL</div>
+                        <div class="canvas-container" style="transform-origin: top center; transition: transform 0.1s ease-out;">
+                            <canvas id="ref_${i}"></canvas>
+                        </div>
+                     </div>
+                     
+                     <!-- Lado Editado -->
+                     <div style="display:flex; flex-direction:column; align-items:center;">
+                        <div style="font-size:12px; font-weight:bold; color:#60a5fa; margin-bottom:5px;">EDITOR</div>
+                        <div class="canvas-container" id="container_${i}" style="transform-origin: top center; transition: transform 0.1s ease-out;">
+                            <canvas id="bg_${i}" class="canvas-bg"></canvas>
+                            <canvas id="fg_${i}" class="canvas-fg"></canvas>
+                        </div>
+                     </div>
                 </div>`;
                 previewDiv.appendChild(card);
 
@@ -467,22 +704,59 @@
                 <div class="toolbar-group">
                     <button class="tool-btn" id="btnPaint" onclick="setMode('paint')">🖌️ Pintar</button>
                     <button class="tool-btn restore" id="btnRestore" onclick="setMode('restore')">🪄 Restauração</button>
-                </div>
-                <div class="toolbar-group">
-                    <input type="color" id="colorPicker" value="#ffffff">
+                    <button class="tool-btn" id="btnText" onclick="setMode('text')">🔤 Texto</button>
+                    <button class="tool-btn" id="btnOcr" onclick="setMode('ocr')">🔍 Copiar</button>
+                    <button class="tool-btn" id="btnPan" onclick="setMode('pan')">✋ Mover</button>
                     <button class="tool-btn" id="btnEyeDropper" onclick="activateEyeDropper()">💧 Pipeta</button>
+                    <input type="color" id="colorPicker" value="#000000" title="Cor do Pincel">
                 </div>
-                <div class="toolbar-group">
-                    <label style="font-size: 12px; color: #94a3b8;">Pincel:</label>
+
+                <!-- Configurações de Pincel (Mostradas apenas em Paint/Restore) -->
+                <div class="toolbar-group" id="brushSettings">
+                    <label style="font-size: 11px; color: #94a3b8;">Pincel:</label>
                     <input type="range" id="brushSize" min="2" max="100" value="20">
                 </div>
+
+                <!-- Configurações de Texto (Mostradas apenas em Text) -->
+                <div class="toolbar-group" id="textSettings" style="display: none; flex-wrap: wrap; justify-content: center; gap: 10px; border-left: 2px solid #334155; padding-left: 15px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label style="font-size: 11px; color: #94a3b8;">Cat:</label>
+                        <select id="font-category" style="background: #1e293b; color: white; border: 1px solid #334155; border-radius: 4px; font-size: 11px; padding: 2px; max-width: 80px;"></select>
+
+                        <label style="font-size: 11px; color: #94a3b8;">Fonte:</label>
+                        <select id="font-name" style="background: #1e293b; color: white; border: 1px solid #334155; border-radius: 4px; font-size: 11px; padding: 2px; max-width: 100px; text-overflow: ellipsis;"></select>
+
+                        <button class="tool-btn" style="padding: 2px 6px; font-size: 10px;" title="Importar Fonte Customizada" onclick="importCustomFont()">➕ Font</button>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label style="font-size: 11px; color: #94a3b8;">Tam:</label>
+                        <input type="range" id="textSize" min="10" max="150" value="30" style="width: 70px;">
+                        <span id="textSizeValue" style="font-size: 11px; min-width: 25px; color: white;">30px</span>
+                        
+                        <input type="color" id="textColorPicker" value="#000000" title="Cor do Texto" style="margin-left:5px;">
+                        
+                        <div style="display:flex; border-left: 1px solid #334155; padding-left: 8px; margin-left: 4px; gap: 6px;">
+                            <button class="tool-btn" style="padding: 2px 6px; font-size: 10px;" id="btnMeasure" onclick="setMode('measure')" title="Medir Tamanho">📏 Medir</button>
+                            <button class="tool-btn" style="padding: 2px 6px; font-size: 10px; border-color: #3b82f6;" onclick="editTextContent()" title="Editar Texto">📝 Editar</button>
+                            <button class="tool-btn" style="padding: 2px 6px; font-size: 10px; border-color: #ef4444; color: #ef4444;" onclick="deleteSelectedText()" title="Apagar Texto">🗑️ Apagar</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="toolbar-group">
-                    <label style="font-size: 12px; color: #94a3b8;">🔍 Zoom:</label>
+                    <label style="font-size: 11px; color: #94a3b8;">🔍 Zoom:</label>
                     <input type="range" id="zoomLevel" min="0.5" max="3" step="0.1" value="1" oninput="updateZoom()">
                     <span id="zoomValue" style="font-size: 11px; min-width: 30px;">100%</span>
                 </div>
+                
+                <div class="toolbar-group">
+                    <button class="tool-btn" style="background:#334155;" onclick="openShortcutModal()">⌨️ Teclas</button>
+                </div>
             </div>`;
             document.body.insertAdjacentHTML('beforeend', toolbarHTML);
+            attachToolbarEvents();
+            if (typeof initFontSystem === 'function') initFontSystem();
         }
 
         function setupLocalCanvas(index, src) {
@@ -491,8 +765,19 @@
             const bgCtx = bgCanvas.getContext('2d', { willReadFrequently: true });
             const fgCtx = fgCanvas.getContext('2d', { willReadFrequently: true });
 
+            window.canvases[index] = {
+                bg: bgCanvas,
+                fg: fgCanvas,
+                paths: [], // Novo: Armazena pinceladas (limpeza/pintura)
+                texts: [],
+                selectedText: null,
+                natWidth: 0,
+                natHeight: 0,
+                baseFG: null
+            };
+            const refCanvas = document.getElementById(`ref_${index}`);
+            const refCtx = refCanvas.getContext('2d');
             const img = new Image();
-            window.canvases[index] = { bg: bgCanvas, fg: fgCanvas, renderWidth: 0, renderHeight: 0, natWidth: 0, natHeight: 0 };
 
             img.onload = () => {
                 const MAX_WIDTH = 550;
@@ -503,6 +788,7 @@
 
                 bgCanvas.width = dw; bgCanvas.height = dh;
                 fgCanvas.width = dw; fgCanvas.height = dh;
+                refCanvas.width = dw; refCanvas.height = dh;
 
                 window.canvases[index].renderWidth = dw;
                 window.canvases[index].renderHeight = dh;
@@ -510,6 +796,7 @@
                 window.canvases[index].natHeight = img.height;
 
                 bgCtx.drawImage(img, 0, 0, dw, dh);
+                refCtx.drawImage(img, 0, 0, dw, dh);
                 // No editor local, começamos com o FG vazio (transparente) para que o usuário pinte por cima
                 attachDrawingEvents(fgCanvas, fgCtx, index);
             };
@@ -539,10 +826,22 @@
                     <button class="tool-btn" style="padding: 4px 8px; font-size:12px;" onclick="downloadEdited(${index}, '${name}')">💾 Salvar Edição</button>
                 </div>
                 <div class="zoom-wrapper">
-                    <div class="canvas-container" id="container_${index}" style="transform-origin: top center; transition: transform 0.1s ease-out; margin: 20px;">
-                        <canvas id="bg_${index}" class="canvas-bg"></canvas>
-                        <canvas id="fg_${index}" class="canvas-fg"></canvas>
-                    </div>
+                     <!-- Lado Original -->
+                     <div style="display:flex; flex-direction:column; align-items:center; flex-shrink: 0;">
+                        <div style="font-size:12px; font-weight:bold; color:#94a3b8; margin-bottom:5px;">ORIGINAL</div>
+                        <div class="canvas-container" style="transform-origin: top left; transition: transform 0.1s ease-out;">
+                            <canvas id="ref_${index}"></canvas>
+                        </div>
+                     </div>
+                     
+                     <!-- Lado Editado -->
+                     <div style="display:flex; flex-direction:column; align-items:center; flex-shrink: 0;">
+                        <div style="font-size:12px; font-weight:bold; color:#60a5fa; margin-bottom:5px;">EDITOR</div>
+                        <div class="canvas-container" id="container_${index}" style="transform-origin: top left; transition: transform 0.1s ease-out;">
+                            <canvas id="bg_${index}" class="canvas-bg"></canvas>
+                            <canvas id="fg_${index}" class="canvas-fg"></canvas>
+                        </div>
+                     </div>
                 </div>`;
 
                 previewDiv.appendChild(card);
@@ -550,18 +849,154 @@
             });
         }
 
-        let currentMode = 'none'; // Começa desativado por padrão
-        let isDrawing = false;
-        let currentView = 'edit'; // 'edit' ou 'reader'
+        window.currentMode = 'none'; // 'paint', 'restore', 'picker', 'text', 'pan', 'ocr'
+        window.lastDrawingMode = 'none'; // Changed from 'paint' to 'none' to avoid initial mode conflict
+        window.isDrawing = false;
+        window.isPanning = false;
+        window.isOcrSelecting = false;
+        window.ocrStartX = 0;
+        window.ocrStartY = 0;
+        window.activePanContainer = null;
+        window.lastPanPos = { x: 0, y: 0 };
+        window.currentView = 'edit'; // 'edit' ou 'reader'
+        window.measureStartY = 0;
+        window.isMeasuring = false;
+        window.isSpacePressed = false;
+
+        async function finishOcrSelection(index, x1, y1, x2, y2) {
+            window.isOcrSelecting = false;
+
+            const rx = Math.min(x1, x2);
+            const ry = Math.min(y1, y2);
+            const rw = Math.abs(x2 - x1);
+            const rh = Math.abs(y2 - y1);
+
+            if (rw < 10 || rh < 10) {
+                redrawFG(index);
+                if (window.currentView === 'reader') document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
+                return; // Ignore accidental clicks
+            }
+
+            // Mostrar feedback visual
+            const initialCursor = document.body.style.cursor;
+            document.body.style.cursor = 'wait';
+
+            try {
+                const data = window.canvases[index];
+
+                // Extrair o retângulo
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = rw;
+                tempCanvas.height = rh;
+                const tempCtx = tempCanvas.getContext('2d');
+
+                // O canvas nativo original (bg) possui a imagem, no Editor Mode o BG muitas vezes
+                // é apagado pelas ferramentas. No Reader, o BG não é editado.
+                // Mas para garantir 100% que as borrachas/inpaint não afetaram o OCR:
+                // Vamos instanciar uma nova imagem a partir do source original (guardado no bg ou file)
+                // Usar o `data.bg` e `data.fg` funciona na renderização inicial, mas edições estragam a detecção
+                const refCanvas = document.getElementById(`ref_${index}`);
+
+                // Pra garantir que a imagem não foi superescrita na memória pelo OpenCV de processamento
+                // Vamos tentar achar a tag img "before" escondida ou recarregar direto do src original
+                let rawSrc = null;
+                if (window.currentView === 'edit') {
+                    // Local dev files: window.selectedFiles holds original blobs
+                    if (window.selectedFiles && window.selectedFiles[index]) {
+                        rawSrc = URL.createObjectURL(window.selectedFiles[index]);
+                    }
+                } else {
+                    // Reader view / Processed mode
+                    const card = document.querySelectorAll('.preview-card')[index];
+                    if (card) {
+                        const rawImgEl = card.querySelector('img[src*="before_"]');
+                        if (rawImgEl) rawSrc = rawImgEl.src;
+                    }
+                }
+
+                if (rawSrc) {
+                    // Lemos rigorosamente da source raw sem compressões do canvas
+                    const imgRaw = new Image();
+                    imgRaw.crossOrigin = "Anonymous";
+                    await new Promise(r => { imgRaw.onload = r; imgRaw.onerror = r; imgRaw.src = rawSrc; });
+
+                    // Remapeando coordenadas pro tamanho nativo da imagem crua pra não errar a mira
+                    const sRX = rx * (imgRaw.width / data.renderWidth);
+                    const sRY = ry * (imgRaw.height / data.renderHeight);
+                    const sRW = rw * (imgRaw.width / data.renderWidth);
+                    const sRH = rh * (imgRaw.height / data.renderHeight);
+
+                    tempCanvas.width = sRW;
+                    tempCanvas.height = sRH;
+                    tempCtx.clearRect(0, 0, sRW, sRH);
+                    tempCtx.drawImage(imgRaw, sRX, sRY, sRW, sRH, 0, 0, sRW, sRH);
+                } else if (refCanvas) {
+                    tempCtx.clearRect(0, 0, rw, rh);
+                    tempCtx.drawImage(refCanvas, rx, ry, rw, rh, 0, 0, rw, rh);
+                }
+
+                const base64Image = tempCanvas.toDataURL("image/png");
+
+                const response = await fetch('/api/ocr_region', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64Image })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.text && result.text.trim()) {
+                        const txt = result.text.trim();
+                        try {
+                            if (navigator.clipboard && window.isSecureContext) {
+                                await navigator.clipboard.writeText(txt);
+                                alert("Texto copiado para a área de transferência:\n\n" + txt);
+                            } else {
+                                // Fallback
+                                const textArea = document.createElement("textarea");
+                                textArea.value = txt;
+                                textArea.style.position = "fixed";
+                                textArea.style.left = "-999999px";
+                                textArea.style.top = "-999999px";
+                                document.body.appendChild(textArea);
+                                textArea.focus();
+                                textArea.select();
+                                document.execCommand('copy');
+                                textArea.remove();
+                                alert("Texto copiado (fallback) para a área de transferência:\n\n" + txt);
+                            }
+                        } catch (err) {
+                            alert("Texto extraído (não foi possível copiar automaticamente):\n\n" + txt);
+                        }
+                    } else {
+                        alert("Nenhum texto detectado nesta região.");
+                    }
+                } else {
+                    const errorObj = await response.json();
+                    alert("Erro no OCR: " + (errorObj.error || "Desconhecido"));
+                }
+            } catch (e) {
+                alert("Erro ao executar OCR: " + e.message);
+            } finally {
+                document.body.style.cursor = initialCursor;
+                redrawFG(index);
+                if (window.currentView === 'reader') {
+                    document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
+                }
+            }
+        }
 
         function updateZoom() {
-            const level = parseFloat(document.getElementById('zoomLevel').value);
-            document.getElementById('zoomValue').innerText = `${Math.round(level * 100)}%`;
+            const zoomInput = document.getElementById('zoomLevel');
+            const zoomValue = document.getElementById('zoomValue');
+            if (!zoomInput || !zoomValue) return;
+
+            const level = parseFloat(zoomInput.value);
+            zoomValue.innerText = `${Math.round(level * 100)}%`;
 
             document.querySelectorAll('.canvas-container').forEach(container => {
                 container.style.transform = `scale(${level})`;
 
-                // Armazena tamanho base se não existir
                 if (!container.dataset.baseWidth) {
                     container.dataset.baseWidth = container.offsetWidth;
                     container.dataset.baseHeight = container.offsetHeight;
@@ -570,11 +1005,12 @@
                 const bw = parseFloat(container.dataset.baseWidth);
                 const bh = parseFloat(container.dataset.baseHeight);
 
-                // Offset necessário para o scrollbar acompanhar a escala do transform
-                const marginV = (bh * (level - 1)) / 2 + 20;
-                const marginH = (bw * (level - 1)) / 2 + 20;
+                // No mode flex-start, a margem só precisa compensar o crescimento do scale
+                const extraH = bw * (level - 1);
+                const extraV = bh * (level - 1);
 
-                container.style.margin = `${marginV}px ${marginH}px`;
+                container.style.marginBottom = `${extraV + 40}px`;
+                container.style.marginRight = `${extraH + 40}px`;
             });
 
             // Redimensiona o reader view (se estiver ativo)
@@ -600,7 +1036,7 @@
             const cursor = document.getElementById('brushCursor');
             const zoom = document.getElementById('zoomLevel') ? document.getElementById('zoomLevel').value : 1;
 
-            if (currentMode === 'none' || currentMode === 'picker' || currentView !== 'edit' && currentView !== 'reader') {
+            if (window.currentMode === 'none' || window.currentMode === 'picker' || window.currentMode === 'text' || currentView !== 'edit' && currentView !== 'reader') {
                 cursor.style.display = 'none';
                 return;
             }
@@ -618,7 +1054,16 @@
             }
 
             cursor.style.display = 'block';
-            const size = document.getElementById('brushSize').value;
+            const textSzEl = document.getElementById('textSize');
+            const brushSzEl = document.getElementById('brushSize');
+            let size = window.currentMode === 'text' ? (textSzEl ? textSzEl.value : 30) : (brushSzEl ? brushSzEl.value : 20);
+
+            // Se houver um texto selecionado, usa o tamanho dele para feedback visual
+            const canvasData = window.canvases.find(c => c && c.selectedText);
+            if (canvasData && canvasData.selectedText && window.currentMode === 'text') {
+                size = canvasData.selectedText.size;
+            }
+
             const rect = e.target.getBoundingClientRect();
             let scaleX = 1;
 
@@ -634,20 +1079,162 @@
             cursor.style.top = `${clientY}px`;
         }
 
-        document.addEventListener('mousemove', updateCursor);
-        document.getElementById('brushSize').addEventListener('input', (e) => {
-            // Se mudou o range sem mover o mouse, redesenhe a bolinha se ela estiver ativa
-            const cursor = document.getElementById('brushCursor');
-            if (cursor.style.display === 'block') {
-                const size = e.target.value;
-                // Calculo grosso se não tivermos o scale perfeito agora
-                cursor.style.width = `${size}px`;
-                cursor.style.height = `${size}px`;
+        function attachToolbarEvents() {
+            // Listeners da Toolbar (são chamados após a injeção no DOM)
+            const brushSize = document.getElementById('brushSize');
+            if (brushSize) {
+                brushSize.addEventListener('input', (e) => {
+                    const size = e.target.value;
+                    const cursor = document.getElementById('brushCursor');
+                    if (cursor && cursor.style.display === 'block') {
+                        cursor.style.width = `${size}px`;
+                        cursor.style.height = `${size}px`;
+                    }
+                });
+            }
+
+            const textSize = document.getElementById('textSize');
+            if (textSize) {
+                textSize.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    const label = document.getElementById('textSizeValue');
+                    if (label) label.innerText = val + 'px';
+                    const canvasData = window.canvases.find(c => c && c.selectedText);
+                    if (canvasData && canvasData.selectedText) {
+                        canvasData.selectedText.size = val;
+                        redrawFG(window.canvases.indexOf(canvasData));
+                    }
+                });
+            }
+
+            const colorPicker = document.getElementById('colorPicker');
+            if (colorPicker) {
+                colorPicker.addEventListener('input', (e) => {
+                    // Pincel
+                });
+            }
+
+            const textColorPicker = document.getElementById('textColorPicker');
+            if (textColorPicker) {
+                textColorPicker.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    const canvasData = window.canvases.find(c => c && c.selectedText);
+                    if (canvasData && canvasData.selectedText) {
+                        canvasData.selectedText.color = val;
+                        redrawFG(window.canvases.indexOf(canvasData));
+                    }
+                });
+            }
+
+            // Font-name (novo ID) listener processado por font-system.js
+            // O fontSystem chama globalUpdateSelectedTextFont() (mascarado como updateSelectedTextFont)
+        }
+
+        // Bridge function expected by font-system.js
+        window.updateSelectedTextFont = function () {
+            const fontNameEl = document.getElementById('font-name');
+            if (fontNameEl) {
+                const val = fontNameEl.value;
+                const canvasData = window.canvases.find(c => c && c.selectedText);
+                if (canvasData && canvasData.selectedText) {
+                    canvasData.selectedText.family = val;
+                    // redrawFG vai chamar drawText assincronamente que forçará o carregamento da fonte
+                    redrawFG(window.canvases.indexOf(canvasData));
+                }
+            }
+        };
+
+        async function editTextContent() {
+            const index = window.canvases.findIndex(c => c && c.selectedText);
+            if (index !== -1) {
+                const data = window.canvases[index];
+                const textObj = data.selectedText;
+
+                const container = window.currentView === 'reader'
+                    ? document.querySelector('.reader-view .canvas-container') // Ajuste caso necessário no reader
+                    : document.getElementById(`container_${index}`);
+
+                let scaleX = 1; let scaleY = 1;
+                if (container) {
+                    const canvasEl = document.getElementById(`fg_${index}`) || container.querySelector('canvas');
+                    const rect = canvasEl.getBoundingClientRect();
+                    scaleX = window.canvases[index].renderWidth / rect.width;
+                    scaleY = window.canvases[index].renderHeight / rect.height;
+                }
+
+                const result = await showInlineTextEditor(container, textObj, scaleX, scaleY);
+                if (result !== null) {
+                    textObj.content = result.content;
+                    textObj.maxWidth = result.maxWidth;
+                    redrawFG(index);
+                }
+            } else {
+                alert("Selecione um texto primeiro!");
+            }
+        }
+
+        function deleteSelectedText() {
+            const index = window.canvases.findIndex(c => c && c.selectedText);
+            if (index !== -1) {
+                const data = window.canvases[index];
+                data.texts = data.texts.filter(t => t !== data.selectedText);
+                data.selectedText = null;
+                redrawFG(index);
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            // Se estiver gravando um atalho
+            if (window.isRecordingShortcut) {
+                e.preventDefault();
+                window.userShortcuts[window.isRecordingShortcut] = e.key.toLowerCase();
+                const keyEl = document.getElementById(`key-${window.isRecordingShortcut}`);
+                if (keyEl) {
+                    keyEl.innerText = e.key;
+                    keyEl.classList.remove('recording');
+                }
+                window.isRecordingShortcut = null;
+                return;
+            }
+
+            // Ignora se estiver digitando em inputs
+            const active = document.activeElement;
+            if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable) return;
+
+            const key = e.key.toLowerCase();
+
+            // Atalhos customizados - Procura no objeto global window
+            if (window.userShortcuts) {
+                for (let tool in window.userShortcuts) {
+                    if (window.userShortcuts[tool] === key) {
+                        e.preventDefault();
+                        setMode(tool);
+                        return;
+                    }
+                }
+            }
+
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                deleteSelectedText();
+            }
+
+            if (e.code === 'Space' && !window.isSpacePressed) {
+                e.preventDefault();
+                window.isSpacePressed = true;
+                window.lastDrawingMode = window.currentMode;
+                setMode('pan');
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' && window.isSpacePressed) {
+                window.isSpacePressed = false;
+                setMode(window.lastDrawingMode);
             }
         });
 
         function switchView(view) {
-            currentView = view;
+            window.currentView = view;
 
             const btnEdit = document.getElementById('btnViewEdit');
             const btnReader = document.getElementById('btnViewReader');
@@ -698,22 +1285,33 @@
                     readerCanvas.height = data.natHeight;
                     readerCanvas.style.width = "100%"; // CSS Auto-scale na coluna
                     readerCanvas.style.display = "block";
-                    readerCanvas.style.cursor = currentMode === 'picker' ? 'crosshair' : 'none';
+                    readerCanvas.style.cursor = window.currentMode === 'picker' ? 'crosshair' : 'none';
 
                     // Revalida cursor sempre que mudar de modo globalmente
                     document.addEventListener('modeChanged', () => {
-                        readerCanvas.style.cursor = currentMode === 'picker' ? 'crosshair' : 'none';
+                        readerCanvas.style.cursor = window.currentMode === 'picker' ? 'crosshair' : 'none';
                     });
 
                     const rCtx = readerCanvas.getContext('2d', { willReadFrequently: true });
                     rCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
                     rCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
 
+                    // Sync helper function for this specific reader canvas
+                    const syncReader = () => {
+                        rCtx.clearRect(0, 0, readerCanvas.width, readerCanvas.height);
+                        rCtx.globalCompositeOperation = 'source-over';
+                        rCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
+                        rCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
+                    };
+
+                    document.addEventListener(`readerRedraw_${index}`, syncReader);
+
                     // Live Edit Proxy from Reader to Original Canvas
                     let readerDrawing = false;
                     let lastRx = 0, lastRy = 0;
 
-                    const proxyDraw = (e, isDown, isMove) => {
+                    const proxyDraw = async (e, isDown, isMove) => {
+                        if (isDown || isMove) e.preventDefault();
                         const rect = readerCanvas.getBoundingClientRect();
                         // Scale coordinates from DOM Image Width to Canvas Render Width (pois o fgCtx alvo está em renderWidth)
                         const scaleX = data.renderWidth / rect.width;
@@ -727,7 +1325,8 @@
                         }
 
                         const rx = (clientX - rect.left) * scaleX;
-                        if (currentMode === 'none') {
+                        const ry = (clientY - rect.top) * scaleY; // Adicionado ry aqui
+                        if (window.currentMode === 'none') {
                             readerDrawing = false;
                             return;
                         }
@@ -737,7 +1336,7 @@
                             updateCursor(e);
                         }
 
-                        if (currentMode === 'picker' && isDown) {
+                        if (window.currentMode === 'picker' && isDown) {
                             const fgCtx = data.fg.getContext('2d', { willReadFrequently: true });
                             const pixel = fgCtx.getImageData(rx, ry, 1, 1).data;
                             if (pixel[3] === 0) {
@@ -749,23 +1348,127 @@
                                 const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
                                 document.getElementById('colorPicker').value = hex;
                             }
-                            setMode('paint');
+                            setMode(window.lastDrawingMode);
                             return;
                         }
 
+                        if (window.currentMode === 'ocr') {
+                            if (isDown) {
+                                window.ocrStartX = rx;
+                                window.ocrStartY = ry;
+                                window.isOcrSelecting = true;
+                                return;
+                            }
+                            if (isMove && window.isOcrSelecting && !isDown) { // isDown here means a new click in draw function args, but touch/mouse might drag with buttons
+                                // Em proxyDraw, 'isDown' é true no mousedown, e isMove é true com !isDown (ou seja false param2)
+                            }
+                        }
+
                         if (isDown) {
+                            if (window.currentMode === 'text') {
+                                // Verifica se clicou em um texto existente
+                                const clickedText = window.canvases[index].texts.find(t => {
+                                    const dist = Math.sqrt((t.x - rx) ** 2 + (t.y - ry) ** 2);
+                                    return dist < 30; // Área de clique
+                                });
+
+                                if (clickedText) {
+                                    window.canvases[index].selectedText = clickedText;
+                                    const textSizeEl = document.getElementById('textSize');
+                                    if (textSizeEl) textSizeEl.value = clickedText.size;
+                                    const textSizeValEl = document.getElementById('textSizeValue');
+                                    if (textSizeValEl) textSizeValEl.innerText = clickedText.size + 'px';
+
+                                    const fontEl = document.getElementById('font-name');
+                                    if (fontEl) fontEl.value = clickedText.family;
+
+                                    const textColorEl = document.getElementById('textColorPicker');
+                                    if (textColorEl) textColorEl.value = clickedText.color;
+                                    redrawFG(index);
+                                    readerDrawing = true;
+                                    return;
+                                } else {
+                                    if (window.canvases[index].selectedText) {
+                                        window.canvases[index].selectedText = null;
+                                        redrawFG(index);
+                                        return;
+                                    } else {
+                                        readerDrawing = false;
+
+                                        const container = document.querySelector('.reader-view .canvas-container');
+                                        const rect = readerCanvas.getBoundingClientRect();
+                                        const scaleX = window.canvases[index].renderWidth / rect.width;
+                                        const scaleY = window.canvases[index].renderHeight / rect.height;
+
+                                        const fontEl = document.getElementById('font-name');
+                                        const fontValue = fontEl ? fontEl.value : 'Inter, sans-serif';
+                                        const textSizeEl = document.getElementById('textSize');
+                                        const textColorEl = document.getElementById('textColorPicker');
+
+                                        const tempTextObj = {
+                                            content: "",
+                                            x: rx, y: ry,
+                                            size: textSizeEl ? parseInt(textSizeEl.value, 10) : 30,
+                                            color: textColorEl ? textColorEl.value : '#000000',
+                                            family: fontValue,
+                                            maxWidth: null
+                                        };
+
+                                        const result = await showInlineTextEditor(container, tempTextObj, scaleX, scaleY);
+
+                                        if (result && result.content) {
+                                            tempTextObj.content = result.content;
+                                            tempTextObj.maxWidth = result.maxWidth;
+
+                                            if (!window.canvases[index].texts) window.canvases[index].texts = [];
+                                            window.canvases[index].texts.push(tempTextObj);
+                                            window.canvases[index].selectedText = tempTextObj;
+                                            redrawFG(index);
+                                        }
+                                        return;
+                                    }
+                                }
+                            }
                             readerDrawing = true;
                             lastRx = rx; lastRy = ry;
                         }
 
-                        if (!readerDrawing) return;
+                        if (isMove && readerDrawing && window.currentMode === 'text' && window.canvases[index].selectedText) {
+                            const t = window.canvases[index].selectedText;
+                            t.x = rx; t.y = ry;
+                            redrawFG(index);
+                            return;
+                        }
+
+                        if (!readerDrawing && !window.isOcrSelecting) return;
+
+                        if (window.isOcrSelecting) {
+                            if (isMove) {
+                                // Apaga o overlay de OCR limpando o fg se não houver mais nada temporário, ou melhor
+                                // Vamos redesenhar o leitor base e aplicar o retangulo no rCtx do leitor apenas visualmente.
+                                rCtx.clearRect(0, 0, readerCanvas.width, readerCanvas.height);
+                                rCtx.globalCompositeOperation = 'source-over';
+                                rCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
+                                rCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
+
+                                const sx = data.natWidth / data.renderWidth;
+                                const sy = data.natHeight / data.renderHeight;
+
+                                rCtx.strokeStyle = '#ef4444';
+                                rCtx.lineWidth = 2 * Math.max(sx, 1);
+                                rCtx.setLineDash([5 * sx, 5 * sy]);
+                                rCtx.strokeRect(window.ocrStartX * sx, window.ocrStartY * sy, (rx - window.ocrStartX) * sx, (ry - window.ocrStartY) * sy);
+                                rCtx.setLineDash([]);
+                            }
+                            return;
+                        }
 
                         const fgCtx = data.fg.getContext('2d');
                         const size = document.getElementById('brushSize').value;
                         const color = document.getElementById('colorPicker').value;
 
                         fgCtx.beginPath();
-                        if (currentMode === 'restore') {
+                        if (window.currentMode === 'restore') {
                             fgCtx.globalCompositeOperation = 'destination-out';
                             fgCtx.strokeStyle = 'rgba(0,0,0,1)';
                         } else {
@@ -791,13 +1494,33 @@
 
                     readerCanvas.addEventListener('mousedown', e => { e.preventDefault(); proxyDraw(e, true, false); });
                     readerCanvas.addEventListener('mousemove', e => { e.preventDefault(); proxyDraw(e, false, true); });
-                    readerCanvas.addEventListener('mouseup', () => readerDrawing = false);
-                    readerCanvas.addEventListener('mouseleave', () => readerDrawing = false);
+                    readerCanvas.addEventListener('mouseup', (e) => {
+                        readerDrawing = false;
+                        if (window.isOcrSelecting) {
+                            const rect = readerCanvas.getBoundingClientRect();
+                            const scaleX = data.renderWidth / rect.width;
+                            const scaleY = data.renderHeight / rect.height;
+                            const rx = (e.clientX - rect.left) * scaleX;
+                            const ry = (e.clientY - rect.top) * scaleY;
+                            finishOcrSelection(index, window.ocrStartX, window.ocrStartY, rx, ry);
+                        }
+                    });
+                    readerCanvas.addEventListener('mouseleave', () => {
+                        readerDrawing = false;
+                        if (window.isOcrSelecting) {
+                            // Cancelar
+                            window.isOcrSelecting = false;
+                            redrawFG(index);
+                            document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
+                        }
+                    });
 
                     // Toques de tela Mobile UI Helper
-                    readerCanvas.addEventListener('touchstart', e => { e.preventDefault(); proxyDraw(e, true, false); }, { passive: false });
-                    readerCanvas.addEventListener('touchmove', e => { e.preventDefault(); proxyDraw(e, false, true); }, { passive: false });
-                    readerCanvas.addEventListener('touchend', () => readerDrawing = false);
+                    if (readerCanvas) {
+                        readerCanvas.addEventListener('touchstart', e => { e.preventDefault(); proxyDraw(e, true, false); }, { passive: false });
+                        readerCanvas.addEventListener('touchmove', e => { e.preventDefault(); proxyDraw(e, false, true); }, { passive: false });
+                        readerCanvas.addEventListener('touchend', () => readerDrawing = false);
+                    }
 
                     imgWrapper.appendChild(readerCanvas);
                     readerDiv.appendChild(imgWrapper);
@@ -807,11 +1530,31 @@
         }
 
         function setMode(mode) {
-            currentMode = mode;
+            if (mode !== 'picker' && mode !== 'none') window.lastDrawingMode = mode;
+            window.currentMode = mode;
             document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-            if (mode === 'paint') document.getElementById('btnPaint').classList.add('active');
-            if (mode === 'restore') document.getElementById('btnRestore').classList.add('active');
-            if (mode === 'picker') document.getElementById('btnEyeDropper').classList.add('active');
+            if (mode === 'paint') { const btn = document.getElementById('btnPaint'); if (btn) btn.classList.add('active'); }
+            if (mode === 'restore') { const btn = document.getElementById('btnRestore'); if (btn) btn.classList.add('active'); }
+            if (mode === 'picker') { const btn = document.getElementById('btnEyeDropper'); if (btn) btn.classList.add('active'); }
+            if (mode === 'measure') { const btn = document.getElementById('btnMeasure'); if (btn) btn.classList.add('active'); }
+            if (mode === 'text') { const btn = document.getElementById('btnText'); if (btn) btn.classList.add('active'); }
+            if (mode === 'ocr') { const btn = document.getElementById('btnOcr'); if (btn) btn.classList.add('active'); }
+
+            // UI Contextual: Mostra/Esconde controles baseados no modo com fade
+            const brushSettings = document.getElementById('brushSettings');
+            const textSettings = document.getElementById('textSettings');
+
+            if (brushSettings && textSettings) {
+                brushSettings.style.display = (mode === 'paint' || mode === 'restore') ? 'flex' : 'none';
+                textSettings.style.display = (mode === 'text') ? 'flex' : 'none';
+
+                // Animação simples de entrada
+                const activePanel = (mode === 'text') ? textSettings : ((mode === 'paint' || mode === 'restore') ? brushSettings : null);
+                if (activePanel) {
+                    activePanel.style.opacity = "0";
+                    setTimeout(() => activePanel.style.opacity = "1", 10);
+                }
+            }
 
             // Dispara evento para o Reader View atualizar
             document.dispatchEvent(new CustomEvent('modeChanged'));
@@ -821,6 +1564,10 @@
                 if (c.fg) {
                     if (mode === 'picker') {
                         c.fg.style.cursor = 'crosshair';
+                    } else if (mode === 'text') {
+                        c.fg.style.cursor = 'text';
+                    } else if (mode === 'pan') {
+                        c.fg.style.cursor = 'grab';
                     } else {
                         c.fg.style.cursor = 'none'; // Esconde seta padrão pra usar a bolinha
                     }
@@ -835,13 +1582,26 @@
         function setupCanvas(index, bgSrc, fgSrc) {
             const bgCanvas = document.getElementById(`bg_${index}`);
             const fgCanvas = document.getElementById(`fg_${index}`);
+            const refCanvas = document.getElementById(`ref_${index}`);
             const bgCtx = bgCanvas.getContext('2d', { willReadFrequently: true });
             const fgCtx = fgCanvas.getContext('2d', { willReadFrequently: true });
+            const refCtx = refCanvas.getContext('2d');
 
             const bgImg = new Image();
             const fgImg = new Image();
 
-            window.canvases[index] = { bg: bgCanvas, fg: fgCanvas, renderWidth: 0, renderHeight: 0, natWidth: 0, natHeight: 0 };
+            window.canvases[index] = {
+                bg: bgCanvas,
+                fg: fgCanvas,
+                renderWidth: 0,
+                renderHeight: 0,
+                natWidth: 0,
+                natHeight: 0,
+                paths: [],
+                texts: [],
+                selectedText: null,
+                baseFG: null // Armazena o resultado do processamento automático
+            };
 
             bgImg.onload = () => {
                 // Resize for UI visibility keeping aspect ratio
@@ -855,6 +1615,7 @@
 
                 bgCanvas.width = dw; bgCanvas.height = dh;
                 fgCanvas.width = dw; fgCanvas.height = dh;
+                refCanvas.width = dw; refCanvas.height = dh;
 
                 window.canvases[index].renderWidth = dw;
                 window.canvases[index].renderHeight = dh;
@@ -862,9 +1623,11 @@
                 window.canvases[index].natHeight = bgImg.height;
 
                 bgCtx.drawImage(bgImg, 0, 0, dw, dh);
+                refCtx.drawImage(bgImg, 0, 0, dw, dh);
 
                 fgImg.onload = () => {
                     fgCtx.drawImage(fgImg, 0, 0, dw, dh);
+                    window.canvases[index].baseFG = fgImg; // Guarda para restauração
                     attachDrawingEvents(fgCanvas, fgCtx, index);
                 };
                 fgImg.src = fgSrc;
@@ -875,7 +1638,7 @@
         function attachDrawingEvents(canvas, ctx, index) {
             let lastX = 0, lastY = 0;
 
-            const draw = (e, isDown, isMove) => {
+            const draw = async (e, isDown, isMove) => {
                 // Previne scroll e pinch-zoom nativo do browser enquanto pinta
                 if (isDown || isMove) e.preventDefault();
 
@@ -889,12 +1652,20 @@
                 const x = (clientX - rect.left) * scaleX;
                 const y = (clientY - rect.top) * scaleY;
 
-                if (currentMode === 'none') {
-                    isDrawing = false;
+                if (window.currentMode === 'pan' && isDown) {
+                    window.isPanning = true;
+                    window.activePanContainer = canvas.closest('.zoom-wrapper');
+                    window.lastPanPos = { x: clientX, y: clientY };
+                    canvas.style.cursor = 'grabbing';
                     return;
                 }
 
-                if (currentMode === 'picker' && isDown) {
+                if (window.currentMode === 'none') {
+                    window.isDrawing = false;
+                    return;
+                }
+
+                if (window.currentMode === 'picker' && isDown) {
                     let pixel = ctx.getImageData(x, y, 1, 1).data;
                     if (pixel[3] === 0) {
                         const bgCanvas = window.canvases[index].bg;
@@ -903,52 +1674,334 @@
                     }
                     const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
                     document.getElementById('colorPicker').value = hex;
-                    setMode('paint');
+                    setMode(window.lastDrawingMode);
+                    return;
+                }
+
+                if (window.currentMode === 'ocr' && isDown) {
+                    window.ocrStartX = x;
+                    window.ocrStartY = y;
+                    window.isOcrSelecting = true;
                     return;
                 }
 
                 if (isDown) {
-                    isDrawing = true;
+                    if (window.currentMode === 'measure') {
+                        window.measureStartY = y;
+                        window.isMeasuring = true;
+                        return;
+                    }
+
+                    if (window.currentMode === 'text') {
+                        // Verifica se clicou em um texto existente
+                        const clickedText = window.canvases[index].texts.find(t => {
+                            const dist = Math.sqrt((t.x - x) ** 2 + (t.y - y) ** 2);
+                            return dist < 30; // Área de clique aproximada
+                        });
+
+                        if (clickedText) {
+                            window.canvases[index].selectedText = clickedText;
+                            const textSizeEl = document.getElementById('textSize');
+                            if (textSizeEl) textSizeEl.value = clickedText.size;
+                            const textSizeValEl = document.getElementById('textSizeValue');
+                            if (textSizeValEl) textSizeValEl.innerText = clickedText.size + 'px';
+
+                            // Atualiza os dropdowns para refletir a fonte do texto selecionado
+                            const fontEl = document.getElementById('font-name');
+                            if (fontEl) fontEl.value = clickedText.family;
+
+                            const textColorEl = document.getElementById('textColorPicker');
+                            if (textColorEl) textColorEl.value = clickedText.color;
+                            redrawFG(index);
+                            window.isDrawing = true;
+                            return;
+                        } else {
+                            // Se clicou fora, deseleciona
+                            if (window.canvases[index].selectedText) {
+                                window.canvases[index].selectedText = null;
+                                redrawFG(index);
+                                return;
+                            } else {
+                                // Impede que o mouse fique preso
+                                window.isDrawing = false;
+
+                                const container = document.getElementById(`container_${index}`);
+                                const canvasEl = document.getElementById(`fg_${index}`);
+                                const rect = canvasEl.getBoundingClientRect();
+                                const scaleX = window.canvases[index].renderWidth / rect.width;
+                                const scaleY = window.canvases[index].renderHeight / rect.height;
+
+                                const fontEl = document.getElementById('font-name');
+                                const fontValue = fontEl ? fontEl.value : 'Inter, sans-serif';
+                                const textSizeEl = document.getElementById('textSize');
+                                const textColorEl = document.getElementById('textColorPicker');
+
+                                const tempTextObj = {
+                                    content: "",
+                                    x, y,
+                                    size: textSizeEl ? parseInt(textSizeEl.value, 10) : 30,
+                                    color: textColorEl ? textColorEl.value : '#000000',
+                                    family: fontValue,
+                                    maxWidth: null
+                                };
+
+                                const result = await showInlineTextEditor(container, tempTextObj, scaleX, scaleY);
+
+                                if (result && result.content) {
+                                    tempTextObj.content = result.content;
+                                    tempTextObj.maxWidth = result.maxWidth;
+
+                                    if (!window.canvases[index].texts) window.canvases[index].texts = [];
+                                    window.canvases[index].texts.push(tempTextObj);
+                                    window.canvases[index].selectedText = tempTextObj;
+                                    redrawFG(index);
+                                }
+                                return;
+                            }
+                        }
+                    }
+                    window.isDrawing = true;
                     lastX = x; lastY = y;
+
+                    // Inicia novo caminho se for pintura
+                    if (window.currentMode === 'paint' || window.currentMode === 'restore') {
+                        const brushSizeEl = document.getElementById('brushSize');
+                        const colorPickerEl = document.getElementById('colorPicker');
+                        window.canvases[index].paths.push({
+                            points: [{ x, y }],
+                            size: brushSizeEl ? brushSizeEl.value : 20,
+                            color: colorPickerEl ? colorPickerEl.value : '#000000',
+                            mode: window.currentMode
+                        });
+                    }
                 }
 
-                if (!isDrawing) return;
-
-                const size = document.getElementById('brushSize').value;
-                const color = document.getElementById('colorPicker').value;
-
-                ctx.beginPath();
-                if (currentMode === 'restore') {
-                    ctx.globalCompositeOperation = 'destination-out';
-                    ctx.strokeStyle = 'rgba(0,0,0,1)';
-                } else {
-                    ctx.globalCompositeOperation = 'source-over';
-                    ctx.strokeStyle = color;
+                if (!isDown && window.isMeasuring) {
+                    window.isMeasuring = false;
+                    setMode('text');
+                    redrawFG(index);
+                    return;
                 }
 
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.lineWidth = size;
+                if (isMove) {
+                    if (window.isOcrSelecting) {
+                        redrawFG(index);
+                        const rCtx = window.canvases[index].fg.getContext('2d');
+                        rCtx.strokeStyle = '#ef4444';
+                        rCtx.lineWidth = 2;
+                        rCtx.setLineDash([5, 5]);
+                        rCtx.strokeRect(window.ocrStartX, window.ocrStartY, x - window.ocrStartX, y - window.ocrStartY);
+                        rCtx.setLineDash([]);
+                        return;
+                    }
 
-                ctx.moveTo(lastX, lastY);
-                ctx.lineTo(x, y);
-                ctx.stroke();
+                    if (window.isPanning && window.activePanContainer) {
+                        const dx = clientX - window.lastPanPos.x;
+                        const dy = clientY - window.lastPanPos.y;
+                        window.activePanContainer.scrollLeft -= dx;
+                        window.activePanContainer.scrollTop -= dy;
+                        window.lastPanPos = { x: clientX, y: clientY };
+                        return;
+                    }
+                    if (window.isMeasuring) {
+                        const height = Math.abs(y - window.measureStartY);
+                        const textSizeEl = document.getElementById('textSize');
+                        if (textSizeEl) {
+                            textSizeEl.value = Math.round(height);
+                            textSizeEl.dataset.lastY = y;
+                        }
 
+                        // Trigger live resize if something is selected
+                        const sel = window.canvases[index].selectedText;
+                        if (sel) {
+                            sel.size = Math.round(height);
+                        }
+                        redrawFG(index);
+                        return;
+                    }
+
+                    if (window.isDrawing && window.currentMode === 'text' && window.canvases[index].selectedText) {
+                        const t = window.canvases[index].selectedText;
+                        t.x = x; t.y = y;
+                        redrawFG(index);
+                        return;
+                    }
+
+                    if (window.isDrawing && (window.currentMode === 'paint' || window.currentMode === 'restore')) {
+                        const currentPath = window.canvases[index].paths[window.canvases[index].paths.length - 1];
+                        if (currentPath) currentPath.points.push({ x, y });
+                        redrawFG(index);
+                    }
+                }
                 lastX = x; lastY = y;
 
                 // Sync cursor visual
                 updateCursor(e);
             };
 
-            canvas.addEventListener('mousedown', e => draw(e, true, false));
-            canvas.addEventListener('mousemove', e => draw(e, false, true));
-            canvas.addEventListener('mouseup', () => isDrawing = false);
-            canvas.addEventListener('mouseleave', () => isDrawing = false);
+            if (canvas) {
+                canvas.addEventListener('mousedown', e => draw(e, true, false));
+                canvas.addEventListener('mousemove', e => draw(e, false, true));
+                canvas.addEventListener('mouseup', (e) => {
+                    if (window.isPanning) {
+                        window.isPanning = false;
+                        window.activePanContainer = null;
+                        canvas.style.cursor = (window.currentMode === 'pan') ? 'grab' : 'none';
+                    }
+                    if (window.isOcrSelecting) {
+                        const rect = canvas.getBoundingClientRect();
+                        const scaleX = canvas.width / rect.width;
+                        const scaleY = canvas.height / rect.height;
+                        const x = (e.clientX - rect.left) * scaleX;
+                        const y = (e.clientY - rect.top) * scaleY;
+                        finishOcrSelection(index, window.ocrStartX, window.ocrStartY, x, y);
+                    }
+                    window.isDrawing = false;
+                });
+                canvas.addEventListener('mouseleave', () => {
+                    if (window.isPanning) {
+                        window.isPanning = false;
+                        window.activePanContainer = null;
+                        canvas.style.cursor = (window.currentMode === 'pan') ? 'grab' : 'none';
+                    }
+                    if (window.isOcrSelecting) {
+                        window.isOcrSelecting = false;
+                        redrawFG(index);
+                    }
+                    window.isDrawing = false;
+                });
 
-            // Suporte a Toque (Mobile)
-            canvas.addEventListener('touchstart', e => draw(e, true, false), { passive: false });
-            canvas.addEventListener('touchmove', e => draw(e, false, true), { passive: false });
-            canvas.addEventListener('touchend', () => isDrawing = false);
+                // Suporte a Toque (Mobile)
+                canvas.addEventListener('touchstart', e => draw(e, true, false), { passive: false });
+                canvas.addEventListener('touchmove', e => draw(e, false, true), { passive: false });
+                canvas.addEventListener('touchend', () => {
+                    if (window.isPanning) {
+                        window.isPanning = false;
+                        window.activePanContainer = null;
+                        canvas.style.cursor = (window.currentMode === 'pan') ? 'grab' : 'none';
+                    }
+                    window.isDrawing = false;
+                });
+            }
+        }
+
+        async function drawText(ctx, x, y, text, size, family, color, maxWidth) {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = color;
+            const fontFam = family || 'Inter, sans-serif';
+            // Usa 'normal' invés de 'bold' pois muitas fontes .ttf importadas (custom) não têm variante bold,
+            // o que faz o Canvas silenciosamente rejeitar o ctx.font e manter o sans-serif padrão.
+            const fontDecl = `normal ${parseInt(size, 10)}px ${fontFam.includes(',') ? fontFam : `"${fontFam}", sans-serif`}`;
+
+            // Força o carregamento da fonte antes de desenhar no Canvas para evitar tela em branco
+            try {
+                // Se a fonte for do sistema e não estiver em @font-face, document.fonts.load pode retornar vazio
+                await document.fonts.load(fontDecl);
+            } catch (e) {
+                console.warn("Falha ao carregar fonte (pode ser do sistema ou inválida):", fontDecl, e);
+            }
+
+            ctx.font = fontDecl;
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'center';
+
+            if (!text) return;
+            const paragraphs = text.toString().split(/\\n|\n/);
+            const lineHeight = parseInt(size, 10) * 1.2;
+            let currentY = y;
+
+            paragraphs.forEach((paragraph) => {
+                if (!maxWidth) {
+                    ctx.fillText(paragraph.trim(), x, currentY);
+                    currentY += lineHeight;
+                } else {
+                    const words = paragraph.split(' ');
+                    let line = '';
+
+                    for (let n = 0; n < words.length; n++) {
+                        const testLine = line + words[n] + ' ';
+                        const metrics = ctx.measureText(testLine);
+                        const testWidth = metrics.width;
+                        if (testWidth > maxWidth && n > 0) {
+                            ctx.fillText(line.trim(), x, currentY);
+                            line = words[n] + ' ';
+                            currentY += lineHeight;
+                        } else {
+                            line = testLine;
+                        }
+                    }
+                    ctx.fillText(line.trim(), x, currentY);
+                    currentY += lineHeight;
+                }
+            });
+        }
+
+        // Função para redesenhar tudo de forma limpa e não-destrutiva
+        function redrawFG(index) {
+            const data = window.canvases[index];
+            if (!data) return;
+            const ctx = data.fg.getContext('2d');
+
+            ctx.clearRect(0, 0, data.fg.width, data.fg.height);
+
+            // 0. Desenha o resultado automático base (se houver)
+            if (data.baseFG) {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.drawImage(data.baseFG, 0, 0, data.fg.width, data.fg.height);
+            }
+
+            // 1. Redesenha todas as pinceladas (Cleaning)
+            data.paths.forEach(p => {
+                ctx.beginPath();
+                ctx.globalCompositeOperation = (p.mode === 'restore') ? 'destination-out' : 'source-over';
+                ctx.strokeStyle = p.color;
+                ctx.lineWidth = p.size;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                if (p.points.length > 0) {
+                    ctx.moveTo(p.points[0].x, p.points[0].y);
+                    p.points.forEach(pt => ctx.lineTo(pt.x, pt.y));
+                }
+                ctx.stroke();
+            });
+
+            // 2. Redesenha os textos
+            // Usamos loop assíncrono porque drawText agora aguarda o carregamento das fontes customizadas
+            (async () => {
+                for (const t of data.texts) {
+                    await drawText(ctx, t.x, t.y, t.content, t.size, t.family, t.color, t.maxWidth);
+                    if (data.selectedText === t) {
+                        ctx.strokeStyle = '#3b82f6';
+                        ctx.lineWidth = 2;
+                        const w = t.maxWidth ? t.maxWidth : 100;
+                        ctx.strokeRect(t.x - (w / 2), t.y - (t.size / 2), w, t.size);
+                    }
+                }
+            })();
+
+            // 3. Feedback de Medição
+            if (window.isMeasuring && window.currentMode === 'measure') {
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = '#fbbf24';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, window.measureStartY);
+                ctx.lineTo(data.fg.width, window.measureStartY);
+                ctx.stroke();
+
+                // Desenha linha atual do mouse
+                const currentY = parseFloat(document.getElementById('textSize').dataset.lastY || window.measureStartY);
+                ctx.beginPath();
+                ctx.moveTo(0, currentY);
+                ctx.lineTo(data.fg.width, currentY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            if (window.currentView === 'reader') {
+                document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
+            }
         }
 
         function rgbToHex(r, g, b) {
@@ -962,16 +2015,56 @@
             offscreen.height = data.natHeight;
             const oCtx = offscreen.getContext('2d');
 
-            // 1. Draw natural Original background
+            const scaleX = data.natWidth / data.renderWidth;
+            const scaleY = data.natHeight / data.renderHeight;
+
+            // 1. Draw natural Original background (Base layer remains intact)
             oCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
 
-            // 2. Draw edited Foreground (which contains holes for restoration, and paints)
-            oCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
+            // 2. Create a temporary layer for CLEANING/PAINTING operations
+            // This is essential to prevent 'destination-out' (Restore tool) from erasing the background.
+            const cleanLayer = document.createElement('canvas');
+            cleanLayer.width = data.natWidth;
+            cleanLayer.height = data.natHeight;
+            const lCtx = cleanLayer.getContext('2d');
 
-            const link = document.createElement('a');
-            link.download = "edited_" + fileName;
-            link.href = offscreen.toDataURL("image/png");
-            link.click();
+            // 2.1 Draw base automatic result on the cleaning layer
+            if (data.baseFG) {
+                lCtx.drawImage(data.baseFG, 0, 0, data.natWidth, data.natHeight);
+            }
+
+            // 2.2 Replay manual paths on the cleaning layer
+            data.paths.forEach(p => {
+                lCtx.beginPath();
+                lCtx.globalCompositeOperation = (p.mode === 'restore') ? 'destination-out' : 'source-over';
+                lCtx.strokeStyle = p.color;
+                lCtx.lineWidth = p.size * scaleX;
+                lCtx.lineCap = 'round';
+                lCtx.lineJoin = 'round';
+
+                if (p.points.length > 0) {
+                    lCtx.moveTo(p.points[0].x * scaleX, p.points[0].y * scaleY);
+                    p.points.forEach(pt => lCtx.lineTo(pt.x * scaleX, pt.y * scaleY));
+                }
+                lCtx.stroke();
+            });
+
+            // 3. Composite the cleaning layer onto the main high-res canvas
+            oCtx.globalCompositeOperation = 'source-over';
+            oCtx.drawImage(cleanLayer, 0, 0);
+
+            // 4. Draw all texts on top at high-res
+            // Como estamos no download/export não podemos ter delay assíncrono direto no click()
+            // Então vamos gerar uma flag assíncrona aqui de export
+            (async () => {
+                for (const t of data.texts) {
+                    await drawText(oCtx, t.x * scaleX, t.y * scaleY, t.content, t.size * scaleX, t.family, t.color);
+                }
+                const link = document.createElement('a');
+                link.download = "edited_" + fileName;
+                link.href = offscreen.toDataURL("image/png");
+                link.click();
+            })();
         }
 
         async function openExternalEditor(index, fileName, event) {
@@ -982,7 +2075,7 @@
             // Removido por solicitação do usuário
         }
     </script>
-
+    <script src="/static/js/font-system.js"></script>
 </body>
 
 </html>
