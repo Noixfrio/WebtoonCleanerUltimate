@@ -23,13 +23,13 @@ Este projeto foi construído com foco total na segurança. Ele roda **localmente
 ## 💻 Instalação
 
 ### Windows (Recomendado)
-1. Certifique-se de ter **EXATAMENTE o [Python 3.10.11](https://www.python.org/downloads/release/python-31011/)** instalado (versões mais novas como 3.12 ou 3.13 quebram a inteligência artificial).
-2. Baixe este projeto e extraia a pasta.
-3. Clique duas vezes no arquivo `install_windows.bat`. Ele vai baixar as bibliotecas necessárias automaticamente.
-4. Para abrir o programa, use o atalho criado na Área de Trabalho ou execute `iniciar_servidor.bat`.
+1. Baixe este projeto e extraia a pasta.
+2. Clique duas vezes no arquivo `1_BAIXAR_PYTHON_3.10.bat` (O Python será instalado automaticamente, marque a opção "Add Python to PATH" na tela).
+3. Depois, clique em `2_INSTALAR_BIBLIOTECAS.bat`. Ele vai baixar as inteligências artificiais necessárias automaticamente.
+4. Para abrir o programa, clique em `3_INICIAR_PROGRAMA.bat`.
 
 ### Linux / MacOS
-1. Instale o Python 3.10+.
+1. Instale **EXATAMENTE o Python 3.10** (versões 3.12 ou mais novas não são compatíveis com o PaddleOCR no momento).
 2. No terminal:
    ```bash
    git clone [url-do-repositorio]

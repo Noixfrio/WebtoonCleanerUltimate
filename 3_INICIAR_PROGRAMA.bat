@@ -5,7 +5,7 @@ echo [+] Abrindo servidor em http://localhost:5000
 
 if not exist venv (
     echo [ERRO] Ambiente virtual nao encontrado. 
-    echo Por favor, rode o arquivo "install_windows.bat" primeiro.
+    echo Por favor, rode o arquivo "2_INSTALAR_BIBLIOTECAS.bat" primeiro.
     pause
     exit /b
 )
