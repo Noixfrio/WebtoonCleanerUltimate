@@ -28,8 +28,20 @@ pip install -r requirements.txt
 
 if %errorlevel% neq 0 (
     echo.
-    echo [ERRO] Ocorreu um problema na instalacao das bibliotecas.
-    echo Verifique sua conexao com a internet e tente novamente.
+    echo ==============================================================
+    echo [ERRO CRITICO] Ocorreu um problema na instalacao das bibliotecas!
+    echo ==============================================================
+    echo Se o erro acima mencionar "paddlepaddle" ou "paddleocr",
+    echo ISSO SIGNIFICA QUE SEU PYTHON E MUITO NOVO ^(3.12, 3.13 ou 3.14^).
+    echo.
+    echo A Inteligencia Artificial deste programa EXIGE O PYTHON 3.10.
+    echo.
+    echo Como resolver:
+    echo 1. Desinstale o seu Python atual no Windows.
+    echo 2. Baixe o Python 3.10.11 EXATAMENTE ^(procure no Google por Python 3.10.11^).
+    echo 3. Apague a pasta "venv" amarela que foi criada aqui.
+    echo 4. Rode este instalador novamente.
+    echo ==============================================================
     pause
     exit /b
 )

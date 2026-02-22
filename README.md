@@ -23,7 +23,7 @@ Este projeto foi construído com foco total na segurança. Ele roda **localmente
 ## 💻 Instalação
 
 ### Windows (Recomendado)
-1. Certifique-se de ter o [Python 3.10+](https://www.python.org/downloads/) instalado.
+1. Certifique-se de ter **EXATAMENTE o [Python 3.10.11](https://www.python.org/downloads/release/python-31011/)** instalado (versões mais novas como 3.12 ou 3.13 quebram a inteligência artificial).
 2. Baixe este projeto e extraia a pasta.
 3. Clique duas vezes no arquivo `install_windows.bat`. Ele vai baixar as bibliotecas necessárias automaticamente.
 4. Para abrir o programa, use o atalho criado na Área de Trabalho ou execute `iniciar_servidor.bat`.

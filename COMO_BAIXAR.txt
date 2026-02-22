@@ -3,8 +3,8 @@
 1. No site do GitHub, clique no botão VERDE escrito "Code".
 2. Clique em "Download ZIP".
 3. Extraia o conteúdo do ZIP para uma pasta no seu computador.
-4. Instale o Python (baixe em python.org). 
-   IMPORTANTE: Na instalação do Python, marque a caixinha "Add Python to PATH".
+4. Instale o Python 3.10 (IMPORTANTE: Tem que ser exatamente a versão 3.10! Versões 3.12 ou 3.13 vão dar erro na IA). 
+   Na instalação do Python 3.10, marque a caixinha "Add Python to PATH".
 5. Clique duas vezes no arquivo "install_windows.bat" dentro da pasta extraída.
 6. Aguarde a instalação terminar.
 7. Para usar, clique duas vezes em "iniciar_servidor.bat".
