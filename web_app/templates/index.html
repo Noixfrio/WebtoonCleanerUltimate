@@ -10,6 +10,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Bangers&family=Caveat&family=Comic+Neue:wght@400;700&family=Dancing+Script&family=Handlee&family=Indie+Flower&family=Patrick+Hand&family=Permanent+Marker&family=Orbitron&family=Rajdhani&family=Libre+Baskerville&display=swap"
         rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         window.onerror = function (msg, url, line, col, error) {
             fetch('/api/log_error', {
@@ -634,9 +635,36 @@
             await fetch(`/cancel/${sessionId}`, { method: "POST" });
         }
 
-        function download() {
-            if (!sessionId) return;
-            window.location.href = `/download/${sessionId}`;
+        async function download() {
+            if (!sessionId || !window.canvases || window.canvases.length === 0) return;
+
+            const btn = document.getElementById("downloadBtn");
+            const originalText = btn.innerText;
+            btn.innerText = "Gerando ZIP... (Aguarde)";
+            btn.disabled = true;
+
+            try {
+                const zip = new JSZip();
+
+                for (let i = 0; i < window.canvases.length; i++) {
+                    const fileName = Array.from(selectedFiles)[i].name;
+                    const blob = await getEditedBlob(i);
+                    zip.file("editado_" + fileName, blob);
+                }
+
+                const content = await zip.generateAsync({ type: "blob" });
+
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(content);
+                link.download = "manga_cleaner_export.zip";
+                link.click();
+            } catch (err) {
+                console.error("Erro ao gerar ZIP:", err);
+                alert("Ocorreu um erro ao gerar o arquivo ZIP.");
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
         }
 
         async function openInHTMLEditor() {
@@ -2008,63 +2036,63 @@
             return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
         }
 
-        function downloadEdited(index, fileName) {
-            const data = window.canvases[index];
-            const offscreen = document.createElement('canvas');
-            offscreen.width = data.natWidth;
-            offscreen.height = data.natHeight;
-            const oCtx = offscreen.getContext('2d');
+        function getEditedBlob(index) {
+            return new Promise((resolve) => {
+                const data = window.canvases[index];
+                const offscreen = document.createElement('canvas');
+                offscreen.width = data.natWidth;
+                offscreen.height = data.natHeight;
+                const oCtx = offscreen.getContext('2d');
 
-            const scaleX = data.natWidth / data.renderWidth;
-            const scaleY = data.natHeight / data.renderHeight;
+                const scaleX = data.natWidth / data.renderWidth;
+                const scaleY = data.natHeight / data.renderHeight;
 
-            // 1. Draw natural Original background (Base layer remains intact)
-            oCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
+                oCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
 
-            // 2. Create a temporary layer for CLEANING/PAINTING operations
-            // This is essential to prevent 'destination-out' (Restore tool) from erasing the background.
-            const cleanLayer = document.createElement('canvas');
-            cleanLayer.width = data.natWidth;
-            cleanLayer.height = data.natHeight;
-            const lCtx = cleanLayer.getContext('2d');
+                const cleanLayer = document.createElement('canvas');
+                cleanLayer.width = data.natWidth;
+                cleanLayer.height = data.natHeight;
+                const lCtx = cleanLayer.getContext('2d');
 
-            // 2.1 Draw base automatic result on the cleaning layer
-            if (data.baseFG) {
-                lCtx.drawImage(data.baseFG, 0, 0, data.natWidth, data.natHeight);
-            }
-
-            // 2.2 Replay manual paths on the cleaning layer
-            data.paths.forEach(p => {
-                lCtx.beginPath();
-                lCtx.globalCompositeOperation = (p.mode === 'restore') ? 'destination-out' : 'source-over';
-                lCtx.strokeStyle = p.color;
-                lCtx.lineWidth = p.size * scaleX;
-                lCtx.lineCap = 'round';
-                lCtx.lineJoin = 'round';
-
-                if (p.points.length > 0) {
-                    lCtx.moveTo(p.points[0].x * scaleX, p.points[0].y * scaleY);
-                    p.points.forEach(pt => lCtx.lineTo(pt.x * scaleX, pt.y * scaleY));
+                if (data.baseFG) {
+                    lCtx.drawImage(data.baseFG, 0, 0, data.natWidth, data.natHeight);
                 }
-                lCtx.stroke();
+
+                data.paths.forEach(p => {
+                    lCtx.beginPath();
+                    lCtx.globalCompositeOperation = (p.mode === 'restore') ? 'destination-out' : 'source-over';
+                    lCtx.strokeStyle = p.color;
+                    lCtx.lineWidth = p.size * scaleX;
+                    lCtx.lineCap = 'round';
+                    lCtx.lineJoin = 'round';
+
+                    if (p.points.length > 0) {
+                        lCtx.moveTo(p.points[0].x * scaleX, p.points[0].y * scaleY);
+                        p.points.forEach(pt => lCtx.lineTo(pt.x * scaleX, pt.y * scaleY));
+                    }
+                    lCtx.stroke();
+                });
+
+                oCtx.globalCompositeOperation = 'source-over';
+                oCtx.drawImage(cleanLayer, 0, 0);
+
+                (async () => {
+                    for (const t of data.texts) {
+                        await drawText(oCtx, t.x * scaleX, t.y * scaleY, t.content, t.size * scaleX, t.family, t.color);
+                    }
+                    offscreen.toBlob((blob) => {
+                        resolve(blob);
+                    }, "image/png");
+                })();
             });
+        }
 
-            // 3. Composite the cleaning layer onto the main high-res canvas
-            oCtx.globalCompositeOperation = 'source-over';
-            oCtx.drawImage(cleanLayer, 0, 0);
-
-            // 4. Draw all texts on top at high-res
-            // Como estamos no download/export não podemos ter delay assíncrono direto no click()
-            // Então vamos gerar uma flag assíncrona aqui de export
-            (async () => {
-                for (const t of data.texts) {
-                    await drawText(oCtx, t.x * scaleX, t.y * scaleY, t.content, t.size * scaleX, t.family, t.color);
-                }
-                const link = document.createElement('a');
-                link.download = "edited_" + fileName;
-                link.href = offscreen.toDataURL("image/png");
-                link.click();
-            })();
+        async function downloadEdited(index, fileName) {
+            const blob = await getEditedBlob(index);
+            const link = document.createElement('a');
+            link.download = "editado_" + fileName;
+            link.href = URL.createObjectURL(blob);
+            link.click();
         }
 
         async function openExternalEditor(index, fileName, event) {
