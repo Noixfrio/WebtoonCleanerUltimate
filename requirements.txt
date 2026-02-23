@@ -13,3 +13,5 @@ pytest
 slowapi
 easyocr
 websockets
+onnxruntime
+huggingface-hub

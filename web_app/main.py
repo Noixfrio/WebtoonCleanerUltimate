@@ -75,7 +75,7 @@ async def websocket_progress(websocket: WebSocket, session: str):
         logger.error(f"WebSocket error: {e}")
 
 @app.post("/start")
-async def start_process(background_tasks: BackgroundTasks, files: list[UploadFile] = File(...)):
+async def start_process(background_tasks: BackgroundTasks, mode: str = "standard", files: list[UploadFile] = File(...)):
     session_id = str(uuid.uuid4())
     session_folder = os.path.join(OUTPUT_DIR, session_id)
     os.makedirs(session_folder, exist_ok=True)
@@ -97,11 +97,11 @@ async def start_process(background_tasks: BackgroundTasks, files: list[UploadFil
         "files": [f.filename for f in files]
     }
 
-    background_tasks.add_task(process_task, input_paths, session_id)
+    background_tasks.add_task(process_task, input_paths, session_id, mode)
 
     return {"session": session_id}
 
-async def process_task(input_paths, session_id):
+async def process_task(input_paths, session_id, mode):
     session_folder = os.path.join(OUTPUT_DIR, session_id)
     
     try:
@@ -122,7 +122,8 @@ async def process_task(input_paths, session_id):
             result = await asyncio.to_thread(
                 pipeline.process_webtoon_streaming,
                 image, 
-                job_id=f"ws_{session_id}_{filename}"
+                job_id=f"ws_{session_id}_{filename}",
+                mode=mode
             )
 
             # Save preview pair
