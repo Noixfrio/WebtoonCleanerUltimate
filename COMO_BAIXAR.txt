@@ -7,6 +7,7 @@
 5. Depois de instalar o Python, clique duas vezes em "2_INSTALAR_BIBLIOTECAS.bat".
 6. Aguarde a tela preta terminar de baixar os arquivos da Inteligência Artificial.
 7. Para usar e desenhar, clique sempre em "3_INICIAR_PROGRAMA.bat".
-8. O seu navegador vai abrir em http://localhost:5000 pronto para usar!
+8. (OPCIONAL) Se quiser usar a IA de alta qualidade (Ultra), rode o arquivo "INSTALAR_IA_ULTRA.bat".
+9. O seu navegador vai abrir em http://localhost:5000 pronto para usar!
 
 Dúvidas? Leia o arquivo README.md para mais detalhes.
