@@ -50,11 +50,14 @@ Se você quer resultados superiores com IA:
 ---
 
 ## 🎨 Principais Ferramentas
-*   **🖌️ Pincel de Limpeza:** IA que remove textos e reconstrói o desenho por baixo.
-*   **🪄 Restauração:** Recupera partes apagadas acidentalmente.
-*   **🔤 Ferramenta de Texto:** Adicione diálogos com suporte a fontes customizadas.
-*   **🔍 Copiar (OCR):** Selecione uma área para extrair o texto original da imagem instantaneamente.
-*   **📱 Modo Leitor:** Visualize o webtoon em scroll vertical infinito enquanto edita em tempo real.
+*   **✨ Ultra IA (Individual):** Agora cada imagem possui seu próprio botão flutuante para abertura instantânea no laboratório avançado (Porta 5001).
+*   **↩️ Reverter IA (Undo):** Proteção contra erros! Se não gostar do resultado da Ultra IA, você pode desfazer a alteração e recuperar a imagem anterior com um clique.
+*   **🖌️ Pincel de Limpeza:** IA local para remoção rápida de balões e textos simples.
+*   **🪄 Restauração:** Pincel que recupera o desenho original apagado.
+*   **🔤 Ferramenta de Texto:** Edição de diálogos com pré-visualização em tempo real.
+*   **🔍 Copiar (OCR):** Extração de texto japonês/coreano/chinês direto da imagem.
+*   **📱 Modo Leitor (Webtoon):** Visualização vertical infinita sem quebras ou espaços entre as páginas, otimizada para leitura e edição fluida.
+*   **⌨️ Atalhos Rápidos:** Use `ESC` para sair da Ultra IA e ferramentas de atalhos integradas para alternância de modos.
 
 ---
 
