@@ -209,8 +209,8 @@ async def api_auto_clean_page(req: AutoCleanRequest):
             return JSONResponse(status_code=400, content={"error": "Imagem inválida"})
 
         # Executar Limpeza de Balões do Pipeline
-        result = await asyncio.to_thread(
-            pipeline.process_webtoon_streaming,
+        result, cleaned_count = await asyncio.to_thread(
+            pipeline._process_core,
             img, 
             job_id=f"auto_clean_{uuid.uuid4().hex[:8]}"
         )
@@ -219,7 +219,10 @@ async def api_auto_clean_page(req: AutoCleanRequest):
         _, buffer = cv2.imencode('.png', result)
         encoded_img = base64.b64encode(buffer).decode('utf-8')
         
-        return {"result": f"data:image/png;base64,{encoded_img}"}
+        return {
+            "result": f"data:image/png;base64,{encoded_img}",
+            "cleaned_count": cleaned_count
+        }
         
     except Exception as e:
         logger.error(f"Erro Auto Clean Page: {str(e)}")

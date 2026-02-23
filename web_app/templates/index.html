@@ -966,12 +966,44 @@
         window.pageBalloonsCache = {}; // Cache de balões por página {index: [boxes]}
 
         async function autoCleanCurrentPage() {
-            const index = window.lastActiveCanvasIndex;
+            let index = window.lastActiveCanvasIndex;
+
+            // Inteligência: Detectar imagem ativa se nenhuma estiver selecionada
+            if (index === null || index === undefined) {
+                if (window.currentView === 'read') {
+                    const readerDiv = document.getElementById("readerView");
+                    const containers = readerDiv.querySelectorAll('.canvas-container');
+                    let maxVisibleHeight = 0;
+                    let bestIndex = null;
+                    const windowHeight = window.innerHeight;
+
+                    containers.forEach(container => {
+                        const rect = container.getBoundingClientRect();
+                        const visibleTop = Math.max(0, rect.top);
+                        const visibleBottom = Math.min(windowHeight, rect.bottom);
+                        const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+
+                        if (visibleHeight > maxVisibleHeight) {
+                            maxVisibleHeight = visibleHeight;
+                            bestIndex = parseInt(container.id.split('_')[2]);
+                        }
+                    });
+                    if (bestIndex !== null) index = bestIndex;
+                } else {
+                    const activeCard = document.querySelector('.preview-card:not([style*="display: none"])');
+                    if (activeCard) {
+                        const container = activeCard.querySelector('.canvas-container[id^="container_"]');
+                        if (container) index = parseInt(container.id.split('_')[1]);
+                    }
+                }
+            }
+
             if (index === null || index === undefined || !window.canvases[index]) {
-                alert("Selecione uma imagem primeiro.");
+                alert("Clique em uma imagem ou role a página para ativá-la.");
                 return;
             }
 
+            window.lastActiveCanvasIndex = index;
             const btn = document.getElementById('btnAutoClean');
             const originalText = btn.innerHTML;
             btn.innerHTML = "⏳...";
@@ -998,9 +1030,17 @@
                         const ctx = canvas.getContext('2d');
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.drawImage(img, 0, 0);
-                        document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
-                        btn.innerHTML = "✅ Pronto!";
-                        setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
+
+                        redrawFG(index); // Força atualização no Editor
+                        document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`)); // Força no Reader
+
+                        if (data.cleaned_count > 0) {
+                            btn.innerHTML = `✅ ${data.cleaned_count} balões!`;
+                        } else {
+                            btn.innerHTML = "⚠️ Nada achado";
+                        }
+
+                        setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 3000);
                     };
                     img.src = data.result;
                 } else {
