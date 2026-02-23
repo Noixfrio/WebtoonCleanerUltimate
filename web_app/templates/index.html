@@ -375,8 +375,6 @@
             <button id="startBtn" class="btn-start" onclick="start()" disabled>Iniciar Processamento</button>
             <button id="browserEditBtn" class="btn-download" style="background-color: #8b5cf6;"
                 onclick="openInHTMLEditor()" disabled>🎨 Editar no Navegador</button>
-            <button id="cancelBtn" class="btn-cancel" onclick="cancel()" style="display:none">Cancelar</button>
-            <button id="downloadBtn" class="btn-download" onclick="download()" style="display:none">Baixar ZIP</button>
         </div>
     </div>
 
@@ -736,7 +734,6 @@
                 setupLocalCanvas(i, file, fileUrl);
             }
         }
-    }
 
         function injectToolbar() {
             const toolbarHTML = `
