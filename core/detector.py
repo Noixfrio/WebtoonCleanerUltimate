@@ -29,9 +29,14 @@ class TextDetector:
                     # EasyOCR initialization
                     # Note: easyocr uses 'ch_sim' or 'ch_tra' for chinese, mapping settings.OCR_LANG if needed
                     # but here we'll assume settings matches easyocr conventions or use 'en' as fallback
+                    # Portability: Define local directory for weights if not provided
+                    model_path = os.path.join(os.getcwd(), "assets", "ocr")
+                    os.makedirs(model_path, exist_ok=True)
+                    
                     cls._instance.ocr = easyocr.Reader(
                         ['ch_sim', 'en'] if settings.OCR_LANG == 'ch' else [settings.OCR_LANG, 'en'],
-                        gpu=settings.ENABLE_GPU
+                        gpu=settings.ENABLE_GPU,
+                        model_storage_directory=model_path
                     )
                     logger.info("EasyOCR Engine initialized successfully")
                 except Exception as e:
