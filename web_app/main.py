@@ -58,6 +58,7 @@ class OCRRequest(BaseModel):
 class UltraInpaintRequest(BaseModel):
     image: str # Base64 da imagem (recorte ou full)
     mask: str  # Base64 da máscara
+    use_frequency_separation: bool = True
 
 class AutoCleanRequest(BaseModel):
     image: str # Base64 da imagem full
@@ -65,6 +66,10 @@ class AutoCleanRequest(BaseModel):
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/ultra", response_class=HTMLResponse)
+async def ultra(request: Request):
+    return templates.TemplateResponse("ultra_index.html", {"request": request})
 
 @app.websocket("/ws/{session}")
 async def websocket_progress(websocket: WebSocket, session: str):
@@ -323,7 +328,7 @@ async def api_ultra_inpaint(req: UltraInpaintRequest):
         logger.info(f"Recebido pedido Ultra Inpaint: img={img.shape}, mask={mask_gray.shape}, mask_max={np.max(mask_gray)}")
         
         # Executar Inpaint Híbrido Avançado
-        cleaned = await asyncio.to_thread(ultra_inpaint_area, img, mask_gray)
+        cleaned = await asyncio.to_thread(ultra_inpaint_area, img, mask_gray, req.use_frequency_separation)
         logger.info("Processamento Ultra Inpaint concluído")
         
         # Encode result

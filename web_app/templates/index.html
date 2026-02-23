@@ -1839,10 +1839,10 @@
 
         let currentUltraBase64 = null;
         window.addEventListener("message", (event) => {
-            if (event.origin !== "http://localhost:5001") return;
+            if (event.origin !== window.location.origin) return;
 
             if (event.data === "ULTRA_READY" && currentUltraBase64) {
-                event.source.postMessage({ type: "LOAD_IMAGE", base64: currentUltraBase64 }, "http://localhost:5001");
+                event.source.postMessage({ type: "LOAD_IMAGE", base64: currentUltraBase64 }, window.location.origin);
                 currentUltraBase64 = null;
             }
 
@@ -1935,7 +1935,7 @@
             cCtx.drawImage(fgCanvas, 0, 0);
 
             currentUltraBase64 = tempComp.toDataURL("image/png");
-            window.open('http://localhost:5001', '_blank');
+            window.open('/ultra', '_blank');
         }
 
         function undoUltraLab() {

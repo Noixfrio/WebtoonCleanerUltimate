@@ -136,12 +136,12 @@
 
         window.onload = () => {
             if (window.opener) {
-                window.opener.postMessage("ULTRA_READY", "http://localhost:5000");
+                window.opener.postMessage("ULTRA_READY", window.location.origin);
             }
         };
 
         window.addEventListener("message", (event) => {
-            if (event.origin !== "http://localhost:5000") return;
+            if (event.origin !== window.location.origin) return;
             if (event.data && event.data.type === "LOAD_IMAGE") {
                 const img = new Image();
                 img.onload = () => setupEditor(img);
@@ -244,7 +244,7 @@
 
                     if (window.opener) {
                         try {
-                            window.opener.postMessage({ type: "ULTRA_RESULT", base64: bgCanvas.toDataURL("image/png") }, "http://localhost:5000");
+                            window.opener.postMessage({ type: "ULTRA_RESULT", base64: bgCanvas.toDataURL("image/png") }, window.location.origin);
                             document.getElementById('status').innerText = "Salvo de volta no Editor Principal!";
                         } catch (e) {
                             console.error(e);
