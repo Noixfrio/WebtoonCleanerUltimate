@@ -7,23 +7,33 @@ echo    ATUALIZADOR DO WEBTOON CLEANER
 echo ==========================================
 echo.
 
-echo [+] Passo 1: Verificando conexao com o GitHub...
-git fetch --all
+echo [+] Passo 1: Verificando conexao com a rede...
+ping -n 1 github.com >nul
 if %errorlevel% neq 0 (
-    echo [!] ERRO: Nao foi possivel conectar ao GitHub. Verifique sua internet.
+    echo [!] ERRO: Nao foi possivel alcancar o GitHub.
+    echo     Verifique se voce tem acesso a internet.
     pause
     exit /b
 )
 
-echo [+] Passo 2: Tentando atualizar arquivos (Pull)...
-echo [AVISO] Se voce editou o index.html ou outros arquivos, este passo pode falhar.
+echo [+] Passo 2: Sincronizando com o servidor...
+git fetch origin master
+if %errorlevel% neq 0 (
+    echo [!] ERRO: Falha ao conversar com o Git. O servidor pode estar fora do ar
+    echo     ou seu repositorio local tem um problema.
+    pause
+    exit /b
+)
+
+echo [+] Passo 3: Tentando atualizar arquivos (Pull)...
+echo [AVISO] Se voce editou arquivos do projeto, este passo pode falhar.
 git pull origin master
 if %errorlevel% neq 0 (
     echo.
     echo [!!!] ATENCAO: A atualizacao falhou por conflitos locais.
-    echo [!!!] Se voce mudou o codigo manualmente, o Git nao quer sobrescrever.
+    echo [!!!] Isso acontece se voce alterou o codigo manualmente.
     echo.
-    echo [RECOMENDACAO] Rode o arquivo "FORCE_UPDATE_EVERYTHING.bat" para resetar tudo.
+    echo [SOLUCAO] Rode o arquivo "FORCE_UPDATE_EVERYTHING.bat" para resetar.
     pause
     exit /b
 )

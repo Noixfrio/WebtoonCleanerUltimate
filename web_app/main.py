@@ -59,6 +59,9 @@ class UltraInpaintRequest(BaseModel):
     image: str # Base64 da imagem (recorte ou full)
     mask: str  # Base64 da máscara
 
+class AutoCleanRequest(BaseModel):
+    image: str # Base64 da imagem full
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -192,6 +195,64 @@ def list_fonts():
         return manager.list_fonts()
     except Exception as e:
         logger.error(f"Erro ao listar fontes: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/api/auto_clean_page")
+async def api_auto_clean_page(req: AutoCleanRequest):
+    try:
+        # Decode image
+        img_data = req.image.split(',')[1] if ',' in req.image else req.image
+        nparr = np.frombuffer(base64.b64decode(img_data), np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            return JSONResponse(status_code=400, content={"error": "Imagem inválida"})
+
+        # Executar Limpeza de Balões do Pipeline
+        result = await asyncio.to_thread(
+            pipeline.process_webtoon_streaming,
+            img, 
+            job_id=f"auto_clean_{uuid.uuid4().hex[:8]}"
+        )
+        
+        # Encode result
+        _, buffer = cv2.imencode('.png', result)
+        encoded_img = base64.b64encode(buffer).decode('utf-8')
+        
+        return {"result": f"data:image/png;base64,{encoded_img}"}
+        
+    except Exception as e:
+        logger.error(f"Erro Auto Clean Page: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/api/detect_balloons")
+async def api_detect_balloons(req: AutoCleanRequest):
+    try:
+        # Decode image
+        img_data = req.image.split(',')[1] if ',' in req.image else req.image
+        nparr = np.frombuffer(base64.b64decode(img_data), np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            return JSONResponse(status_code=400, content={"error": "Imagem inválida"})
+
+        # Preprocessar e detectar
+        ocr_ready = pipeline._preprocess_for_ocr(img)
+        results = pipeline.detector.ocr.readtext(ocr_ready)
+        
+        balloons = []
+        for (bbox, text, prob) in results:
+            if prob >= 0.05:
+                balloons.append({
+                    "box": [[float(p[0]), float(p[1])] for p in bbox],
+                    "text": text,
+                    "confidence": float(prob)
+                })
+        
+        return {"balloons": balloons}
+        
+    except Exception as e:
+        logger.error(f"Erro Detect Balloons: {str(e)}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.post("/api/log_error")

@@ -804,7 +804,8 @@
                     <button class="tool-btn" id="btnPaint" onclick="setMode('paint')">🖌️ Pintar</button>
                     <button class="tool-btn restore" id="btnRestore" onclick="setMode('restore')">🪄 Restauração</button>
                     <button class="tool-btn" id="btnText" onclick="setMode('text')">🔤 Texto</button>
-                    <button class="tool-btn" id="btnOcr" onclick="setMode('ocr')">🔍 Copiar</button>
+                    <button class="tool-btn" id="btnOcr" onclick="setMode('ocr')" title="Clique no balão para Smart OCR ou arraste para selecionar">🔍 Copiar</button>
+                    <button class="tool-btn" id="btnAutoClean" onclick="autoCleanCurrentPage()" title="🪄 Limpar Página Inteira (IA)" style="color:#fbbf24; border-color:#fbbf24">🪄 Auto</button>
                     <button class="tool-btn" id="btnPan" onclick="setMode('pan')">✋ Mover</button>
                     <button class="tool-btn" id="btnEyeDropper" onclick="activateEyeDropper()">💧 Pipeta</button>
                     <button class="tool-btn" id="btnUltraIA" onclick="openUltraLab()" style="border-color: #8b5cf6; color: #a78bfa;" title="Abrir Laboratório Ultra IA (Porta 5001)">✨ Ultra IA</button>
@@ -962,6 +963,82 @@
         window.isOcrSelecting = false;
         window.ocrStartX = 0;
         window.ocrStartY = 0;
+        window.pageBalloonsCache = {}; // Cache de balões por página {index: [boxes]}
+
+        async function autoCleanCurrentPage() {
+            const index = window.lastActiveCanvasIndex;
+            if (index === null || index === undefined || !window.canvases[index]) {
+                alert("Selecione uma imagem primeiro.");
+                return;
+            }
+
+            const btn = document.getElementById('btnAutoClean');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳...";
+            btn.disabled = true;
+
+            try {
+                const canvas = window.canvases[index].bg;
+                const base64 = canvas.toDataURL("image/png");
+
+                // Backup para Undo
+                window.bgUltraBackup = canvas.toDataURL("image/png");
+                document.getElementById('btnUndoUltra').style.display = 'block';
+
+                const res = await fetch('/api/auto_clean_page', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64 })
+                });
+
+                const data = await res.json();
+                if (data.result) {
+                    const img = new Image();
+                    img.onload = () => {
+                        const ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0);
+                        document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
+                        btn.innerHTML = "✅ Pronto!";
+                        setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
+                    };
+                    img.src = data.result;
+                } else {
+                    alert("Erro na limpeza automática.");
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                console.error(e);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function isPointInPoly(pt, poly) {
+            for (var c = false, i = -1, l = poly.length, j = l - 1; ++i < l; j = i)
+                ((poly[i][1] <= pt[1] && pt[1] < poly[j][1]) || (poly[j][1] <= pt[1] && pt[1] < poly[i][1]))
+                    && (pt[0] < (poly[j][0] - poly[i][0]) * (pt[1] - poly[i][1]) / (poly[j][1] - poly[i][1]) + poly[i][0])
+                    && (c = !c);
+            return c;
+        }
+
+        async function detectBalloons(index) {
+            if (window.pageBalloonsCache[index]) return window.pageBalloonsCache[index];
+            try {
+                const base64 = window.canvases[index].bg.toDataURL("image/png");
+                const res = await fetch('/api/detect_balloons', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64 })
+                });
+                const data = await res.json();
+                window.pageBalloonsCache[index] = data.balloons || [];
+                return window.pageBalloonsCache[index];
+            } catch (e) {
+                return [];
+            }
+        }
         window.activePanContainer = null;
         window.lastPanPos = { x: 0, y: 0 };
         window.currentView = 'edit'; // 'edit' ou 'reader'
@@ -1627,7 +1704,17 @@
                             const scaleY = data.renderHeight / rect.height;
                             const rx = (e.clientX - rect.left) * scaleX;
                             const ry = (e.clientY - rect.top) * scaleY;
-                            finishOcrSelection(index, window.ocrStartX, window.ocrStartY, rx, ry);
+
+                            const dx = Math.abs(rx - window.ocrStartX);
+                            const dy = Math.abs(ry - window.ocrStartY);
+
+                            if (dx < 5 && dy < 5) {
+                                // Smart OCR: Clique simples! Detecta balão sob o mouse
+                                window.isOcrSelecting = false;
+                                smartOcrClick(index, rx, ry);
+                            } else {
+                                finishOcrSelection(index, window.ocrStartX, window.ocrStartY, rx, ry);
+                            }
                         }
                     });
                     readerCanvas.addEventListener('mouseleave', () => {
@@ -2128,10 +2215,35 @@
                         const scaleY = canvas.height / rect.height;
                         const x = (e.clientX - rect.left) * scaleX;
                         const y = (e.clientY - rect.top) * scaleY;
-                        finishOcrSelection(index, window.ocrStartX, window.ocrStartY, x, y);
+
+                        const dx = Math.abs(x - window.ocrStartX);
+                        const dy = Math.abs(y - window.ocrStartY);
+
+                        if (dx < 5 && dy < 5) {
+                            // Smart OCR: Clique simples
+                            window.isOcrSelecting = false;
+                            smartOcrClick(index, x, y);
+                        } else {
+                            finishOcrSelection(index, window.ocrStartX, window.ocrStartY, x, y);
+                        }
                     }
                     window.isDrawing = false;
                 });
+
+                async function smartOcrClick(index, x, y) {
+                    const status = document.getElementById('statusText');
+                    if (status) status.innerText = "Analisando balões...";
+
+                    const balloons = await detectBalloons(index);
+                    const found = balloons.find(b => isPointInPoly([x, y], b.box));
+                    if (found) {
+                        navigator.clipboard.writeText(found.text).then(() => {
+                            if (status) status.innerText = "Texto copiado: " + found.text.substring(0, 20) + "...";
+                        });
+                    } else {
+                        if (status) status.innerText = "Nenhum balão detectado. Tente arrastar para selecionar.";
+                    }
+                }
                 canvas.addEventListener('mouseleave', () => {
                     if (window.isPanning) {
                         window.isPanning = false;
