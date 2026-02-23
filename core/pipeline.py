@@ -53,7 +53,7 @@ class MangaCleanerPipeline:
             mask = cv2.dilate(mask, k_connect)
         return mask
 
-    def process_webtoon_streaming(self, image: np.ndarray, job_id: str, threshold: float = 0.05, mode: str = "standard") -> np.ndarray:
+    def process_webtoon_streaming(self, image: np.ndarray, job_id: str, threshold: float = 0.05) -> np.ndarray:
         """Architecture V21.0: Balloon-Aware Local Cleaner."""
         raw_full = np.ascontiguousarray(image, dtype=np.uint8)
         h, w = raw_full.shape[:2]
@@ -137,8 +137,8 @@ class MangaCleanerPipeline:
                         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
                         mask = cv2.dilate(mask, kernel, iterations=1)
                         
-                        # Delegation to InpaintEngine for advanced modes (NS, LaMa, or Hybrid Ultra)
-                        local_cleaned = self.inpaint_engine.process(tight_roi, mask, mode=mode)
+                        # Delegation to InpaintEngine for balloon cleaning
+                        local_cleaned = self.inpaint_engine.process(tight_roi, mask)
                         
                         cleaned_tile[y1:y2, x1:x2] = local_cleaned
             

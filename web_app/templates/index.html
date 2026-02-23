@@ -366,22 +366,16 @@
     <div class="container">
         <h2>Webtoon Cleaner Ultimate</h2>
 
-        Arraste as imagens (PNG/JPG) aqui ou clique para selecionar
-    </div>
-    <input type="file" id="fileInput" multiple hidden accept="image/*">
+        <div id="dropzone">
+            Arraste as imagens (PNG/JPG) aqui ou clique para selecionar
+        </div>
+        <input type="file" id="fileInput" multiple hidden accept="image/*">
 
-    <div class="controls" style="flex-direction: column; align-items: center;">
-        <div style="display: flex; gap: 12px; margin-bottom: 10px;">
+        <div class="controls">
             <button id="startBtn" class="btn-start" onclick="start()" disabled>Iniciar Processamento</button>
             <button id="browserEditBtn" class="btn-download" style="background-color: #8b5cf6;"
                 onclick="openInHTMLEditor()" disabled>🎨 Editar no Navegador</button>
         </div>
-        <label
-            style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #94a3b8; font-size: 0.9rem;">
-            <input type="checkbox" id="ultraMode" style="width: 18px; height: 18px;">
-            ✨ <b>Ultra Quality</b> (LaMa AI Inpainting + ROI)
-        </label>
-    </div>
     </div>
 
     <div id="statusPanel" class="status-panel">
@@ -542,10 +536,7 @@
             statusPanel.style.display = "block";
             document.getElementById("cancelBtn").style.display = "inline-flex";
 
-            const isUltra = document.getElementById("ultraMode").checked;
-            const mode = isUltra ? "ultra" : "standard";
-
-            const response = await fetch(`/start?mode=${mode}`, { method: "POST", body: formData });
+            const response = await fetch("/start", { method: "POST", body: formData });
             const data = await response.json();
             sessionId = data.session;
 

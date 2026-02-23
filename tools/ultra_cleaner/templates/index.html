@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaMa + Frequency Hybrid Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .canvas-container {
+            position: relative;
+            border: 2px solid #444;
+            background-color: #000;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #maskCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        input[type="file"] {
+            color: #ccc;
+        }
+
+        #resultImg {
+            max-width: 100%;
+            border: 2px solid #3498db;
+            display: none;
+        }
+
+        .brush-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status {
+            margin-top: 10px;
+            font-style: italic;
+            color: #3498db;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>LaMa Hybrid - Teste de Frequência</h1>
+
+    <div class="controls">
+        <input type="file" id="imageLoader" accept="image/*">
+        <div class="brush-control">
+            <label>Pincel:</label>
+            <input type="range" id="brushSize" min="5" max="100" value="25">
+        </div>
+        <button id="clearBtn">Limpar Máscara</button>
+        <button id="processBtn" disabled>Processar Imagem</button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="container">
+        <div class="canvas-container" id="container">
+            <canvas id="imageCanvas"></canvas>
+            <canvas id="maskCanvas"></canvas>
+        </div>
+        <div class="result-container">
+            <img id="resultImg" alt="Resultado">
+        </div>
+    </div>
+
+    <script>
+        const imageCanvas = document.getElementById('imageCanvas');
+        const maskCanvas = document.getElementById('maskCanvas');
+        const imgCtx = imageCanvas.getContext('2d');
+        const maskCtx = maskCanvas.getContext('2d');
+        const imageLoader = document.getElementById('imageLoader');
+        const processBtn = document.getElementById('processBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const resultImg = document.getElementById('resultImg');
+        const statusDiv = document.getElementById('status');
+        const brushInput = document.getElementById('brushSize');
+
+        let isDrawing = false;
+        let originalImage = null;
+
+        imageLoader.addEventListener('change', handleImage, false);
+
+        function handleImage(e) {
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const img = new Image();
+                img.onload = function () {
+                    originalImage = img;
+                    imageCanvas.width = img.width;
+                    imageCanvas.height = img.height;
+                    maskCanvas.width = img.width;
+                    maskCanvas.height = img.height;
+
+                    imgCtx.drawImage(img, 0, 0);
+                    maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+
+                    processBtn.disabled = false;
+                    resultImg.style.display = 'none';
+                    statusDiv.innerText = "Imagem carregada. Desenhe a máscara sobre o texto.";
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        }
+
+        // Desenho da máscara
+        maskCanvas.addEventListener('mousedown', startDrawing);
+        maskCanvas.addEventListener('mousemove', draw);
+        maskCanvas.addEventListener('mouseup', stopDrawing);
+        maskCanvas.addEventListener('mouseout', stopDrawing);
+
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = maskCanvas.getBoundingClientRect();
+            const scaleX = maskCanvas.width / rect.width;
+            const scaleY = maskCanvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            maskCtx.fillStyle = 'rgba(255, 0, 0, 0.7)'; // Vermelho semi-transparente para visualização
+            maskCtx.beginPath();
+            maskCtx.arc(x, y, brushInput.value, 0, Math.PI * 2);
+            maskCtx.fill();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        clearBtn.addEventListener('click', () => {
+            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+            statusDiv.innerText = "Máscara limpa.";
+        });
+
+        processBtn.addEventListener('click', async () => {
+            if (!originalImage) return;
+            console.log("Process button clicked");
+
+            statusDiv.innerText = "Processando... aguarde (Invocando Pipeline Híbrido)";
+            processBtn.disabled = true;
+
+            const base64Image = imageCanvas.toDataURL('image/png');
+            const base64Mask = maskCanvas.toDataURL('image/png');
+
+            try {
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: base64Image,
+                        mask: base64Mask
+                    })
+                });
+
+                const data = await response.json();
+                if (data.result) {
+                    resultImg.src = data.result;
+                    resultImg.style.display = 'block';
+                    statusDiv.innerText = "Processamento concluído!";
+                } else if (data.error) {
+                    alert('Erro: ' + data.error);
+                    statusDiv.innerText = "Erro no processamento.";
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Erro na requisição.');
+                statusDiv.innerText = "Erro de conexão.";
+            } finally {
+                processBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>

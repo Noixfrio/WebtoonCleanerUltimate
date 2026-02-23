@@ -43,6 +43,12 @@ Este projeto foi construído com foco total na segurança. Ele roda **localmente
 
 ---
 
+## 🛠️ Ferramentas Avançadas (Experimental)
+Se você quer resultados superiores com IA:
+*   **Ultra Clean Tool:** Execute `python3 scripts/ultra_cleaner.py` para usar o inpainter avançado (LaMa + ROI).
+
+---
+
 ## 🎨 Principais Ferramentas
 *   **🖌️ Pincel de Limpeza:** IA que remove textos e reconstrói o desenho por baixo.
 *   **🪄 Restauração:** Recupera partes apagadas acidentalmente.
