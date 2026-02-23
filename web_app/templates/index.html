@@ -198,6 +198,14 @@
             padding: 8px 16px;
         }
 
+        .tool-btn.active {
+            background: rgba(139, 92, 246, 0.2);
+            border-color: #8b5cf6;
+            color: white;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+        }
+
 
         /* Modal de Atalhos */
         .modal {
@@ -350,13 +358,64 @@
             background: #0f172a;
         }
 
-        /* Tira qualquer respiro de distncia entre imagens */
+        /* Tira qualquer respiro ou borda entre imagens no Webtoon */
         .reader-view img {
             width: 100%;
             display: block;
             margin: 0;
             padding: 0;
             border: none;
+        }
+
+        .reader-view .canvas-container {
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+        }
+
+        .reader-view .canvas-container canvas {
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            vertical-align: top;
+        }
+
+        /* Botão Flutuante Ultra IA */
+        .ultra-float-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            background: rgba(139, 92, 246, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+            opacity: 0.8;
+            user-select: none;
+        }
+
+        .ultra-float-btn:hover {
+            opacity: 1;
+            transform: scale(1.05);
+            background: rgba(139, 92, 246, 0.9);
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+        }
+
+        .ultra-float-btn span {
+            font-size: 14px;
         }
     </style>
 </head>
@@ -718,11 +777,14 @@
                             <canvas id="ref_${i}"></canvas>
                         </div>
                      </div>
-                     
+
                      <!-- Lado Editado -->
                      <div style="display:flex; flex-direction:column; align-items:center;">
                         <div style="font-size:12px; font-weight:bold; color:#60a5fa; margin-bottom:5px;">EDITOR</div>
-                        <div class="canvas-container" id="container_${i}" style="transform-origin: top center; transition: transform 0.1s ease-out;">
+                        <div class="canvas-container" id="container_${i}" style="position:relative; transform-origin: top center; transition: transform 0.1s ease-out;">
+                            <button class="ultra-float-btn" onclick="event.stopPropagation(); openUltraLab(${i})">
+                                <span>✨</span> ULTRA IA
+                            </button>
                             <canvas id="bg_${i}" class="canvas-bg"></canvas>
                             <canvas id="fg_${i}" class="canvas-fg"></canvas>
                         </div>
@@ -745,6 +807,10 @@
                     <button class="tool-btn" id="btnOcr" onclick="setMode('ocr')">🔍 Copiar</button>
                     <button class="tool-btn" id="btnPan" onclick="setMode('pan')">✋ Mover</button>
                     <button class="tool-btn" id="btnEyeDropper" onclick="activateEyeDropper()">💧 Pipeta</button>
+                    <button class="tool-btn" id="btnUltraIA" onclick="openUltraLab()" style="border-color: #8b5cf6; color: #a78bfa;" title="Abrir Laboratório Ultra IA (Porta 5001)">✨ Ultra IA</button>
+                    <button class="tool-btn" id="btnUndoUltra" onclick="undoUltraLab()" style="display: none; border-color: #ef4444; color: #f87171;" title="Reverter as limpezas de IA e voltar à imagem anterior">↩️ Reverter IA</button>
+                    <button class="tool-btn" id="btnRunUltra" onclick="runUltraProcess()" style="display: none; background: #8b5cf6; color: white;">🚀 Processar IA</button>
+                    <button class="tool-btn" id="btnExitWebtoon" onclick="switchView('edit')" style="display: none; border-color: #f59e0b; color: #fbbf24; font-weight: bold;" title="Voltar ao Modo Edição Normal">🔙 Sair do Webtoon</button>
                     <input type="color" id="colorPicker" value="#000000" title="Cor do Pincel">
                 </div>
 
@@ -770,9 +836,9 @@
                         <label style="font-size: 11px; color: #94a3b8;">Tam:</label>
                         <input type="range" id="textSize" min="10" max="150" value="30" style="width: 70px;">
                         <span id="textSizeValue" style="font-size: 11px; min-width: 25px; color: white;">30px</span>
-                        
+
                         <input type="color" id="textColorPicker" value="#000000" title="Cor do Texto" style="margin-left:5px;">
-                        
+
                         <div style="display:flex; border-left: 1px solid #334155; padding-left: 8px; margin-left: 4px; gap: 6px;">
                             <button class="tool-btn" style="padding: 2px 6px; font-size: 10px;" id="btnMeasure" onclick="setMode('measure')" title="Medir Tamanho">📏 Medir</button>
                             <button class="tool-btn" style="padding: 2px 6px; font-size: 10px; border-color: #3b82f6;" onclick="editTextContent()" title="Editar Texto">📝 Editar</button>
@@ -786,7 +852,7 @@
                     <input type="range" id="zoomLevel" min="0.5" max="3" step="0.1" value="1" oninput="updateZoom()">
                     <span id="zoomValue" style="font-size: 11px; min-width: 30px;">100%</span>
                 </div>
-                
+
                 <div class="toolbar-group">
                     <button class="tool-btn" style="background:#334155;" onclick="openShortcutModal()">⌨️ Teclas</button>
                 </div>
@@ -873,7 +939,7 @@
                             <canvas id="ref_${index}"></canvas>
                         </div>
                      </div>
-                     
+
                      <!-- Lado Editado -->
                      <div style="display:flex; flex-direction:column; align-items:center; flex-shrink: 0;">
                         <div style="font-size:12px; font-weight:bold; color:#60a5fa; margin-bottom:5px;">EDITOR</div>
@@ -1290,6 +1356,10 @@
                 // Agora o toolbar fica visível nos DOIS modos
                 if (toolbarDiv) toolbarDiv.style.display = "flex";
 
+                // Ocultar botão "Sair do Webtoon"
+                const btnExit = document.getElementById('btnExitWebtoon');
+                if (btnExit) btnExit.style.display = 'none';
+
                 readerDiv.style.display = "none";
                 readerDiv.innerHTML = ""; // Limpa a memória
                 updateZoom();
@@ -1301,6 +1371,10 @@
                 // Mantém a toolbar ativa pra edição enquanto lê
                 if (toolbarDiv) toolbarDiv.style.display = "flex";
 
+                // Mostrar botão "Sair do Webtoon"
+                const btnExit = document.getElementById('btnExitWebtoon');
+                if (btnExit) btnExit.style.display = 'inline-block';
+
                 readerDiv.style.display = "flex";
 
                 // Monta o visualizador combinando as edições feitas na hora
@@ -1311,12 +1385,23 @@
                     // Container wrapper with same class for Zoom consistency
                     const imgWrapper = document.createElement('div');
                     imgWrapper.className = 'canvas-container';
+                    imgWrapper.id = 'container_reader_' + index; // ID Necessário para o rastreio da imagem
                     imgWrapper.style.position = 'relative';
                     imgWrapper.style.width = '100vw'; // Largura total no leitor
                     imgWrapper.style.maxWidth = '100%';
                     imgWrapper.style.transformOrigin = 'top center';
                     imgWrapper.style.display = 'block';
                     imgWrapper.style.overflow = 'visible';
+                    imgWrapper.style.marginBottom = '0'; // Tira o espaçamento do card
+                    imgWrapper.style.lineHeight = '0'; // Evita gap de texto invisível no container
+                    imgWrapper.style.fontSize = '0'; // Remove ghosting originado por fontes/whitespace do navegador webkit
+
+                    // Botão Ultra IA para o Reader Mode
+                    const floatBtn = document.createElement('button');
+                    floatBtn.className = 'ultra-float-btn';
+                    floatBtn.innerHTML = '<span>✨</span> ULTRA IA';
+                    floatBtn.onclick = (e) => { e.stopPropagation(); openUltraLab(index); };
+                    imgWrapper.appendChild(floatBtn);
 
                     // PERFORMANCE FIX: Em vez de desenhar offscreen e exportar pra base64 (o que gerava muito Lag),
                     // O Reader Mode agora renderiza diretamente para um <canvas> para pintura hiper super fluida
@@ -1579,14 +1664,24 @@
             if (mode === 'measure') { const btn = document.getElementById('btnMeasure'); if (btn) btn.classList.add('active'); }
             if (mode === 'text') { const btn = document.getElementById('btnText'); if (btn) btn.classList.add('active'); }
             if (mode === 'ocr') { const btn = document.getElementById('btnOcr'); if (btn) btn.classList.add('active'); }
+            // O modo 'ultra' foi movido para a porta 5001
 
             // UI Contextual: Mostra/Esconde controles baseados no modo com fade
             const brushSettings = document.getElementById('brushSettings');
             const textSettings = document.getElementById('textSettings');
 
             if (brushSettings && textSettings) {
-                brushSettings.style.display = (mode === 'paint' || mode === 'restore') ? 'flex' : 'none';
-                textSettings.style.display = (mode === 'text') ? 'flex' : 'none';
+                document.getElementById('brushSettings').style.display = (mode === 'paint' || mode === 'restore' || mode === 'ultra') ? 'flex' : 'none';
+                document.getElementById('textSettings').style.display = (mode === 'text' || mode === 'measure') ? 'flex' : 'none';
+                document.getElementById('btnRunUltra').style.display = (mode === 'ultra') ? 'inline-flex' : 'none';
+
+                // Reset cursor blending etc.
+                const cursor = document.getElementById('brushCursor');
+                if (mode === 'paint' || mode === 'restore') {
+                    cursor.style.display = 'block';
+                } else {
+                    cursor.style.display = 'none';
+                }
 
                 // Animação simples de entrada
                 const activePanel = (mode === 'text') ? textSettings : ((mode === 'paint' || mode === 'restore') ? brushSettings : null);
@@ -1613,6 +1708,133 @@
                     }
                 }
             });
+        }
+
+        let currentUltraBase64 = null;
+        window.addEventListener("message", (event) => {
+            if (event.origin !== "http://localhost:5001") return;
+
+            if (event.data === "ULTRA_READY" && currentUltraBase64) {
+                event.source.postMessage({ type: "LOAD_IMAGE", base64: currentUltraBase64 }, "http://localhost:5001");
+                currentUltraBase64 = null;
+            }
+
+            if (event.data && event.data.type === "ULTRA_RESULT") {
+                const img = new Image();
+                img.onload = () => {
+                    let index = window.lastActiveCanvasIndex;
+                    if (index !== undefined && index !== null && window.canvases[index]) {
+                        const bgCanvas = document.getElementById(`bg_${index}`);
+                        const bgCtx = bgCanvas.getContext('2d');
+
+                        // SALVAR BACKUP ANTES DE SOBRESCREVER (Permite Desfazer)
+                        if (!window.canvases[index].bgUltraBackup) {
+                            window.canvases[index].bgUltraBackup = document.createElement('canvas');
+                        }
+                        window.canvases[index].bgUltraBackup.width = bgCanvas.width;
+                        window.canvases[index].bgUltraBackup.height = bgCanvas.height;
+                        window.canvases[index].bgUltraBackup.getContext('2d').drawImage(bgCanvas, 0, 0);
+
+                        bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
+
+                        // Mostrar botão Reverter
+                        const btnUndo = document.getElementById('btnUndoUltra');
+                        if (btnUndo) btnUndo.style.display = 'inline-block';
+
+                        // Limpar os traços e textos anteriores, pois agora fazem parte do fundo (foram processados na 5001)
+                        const fgCanvas = document.getElementById(`fg_${index}`);
+                        fgCanvas.getContext('2d').clearRect(0, 0, fgCanvas.width, fgCanvas.height);
+                        window.canvases[index].paths = [];
+                        window.canvases[index].texts = [];
+
+                        redrawFG(index);
+                        document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
+                        console.log("Imagem recebida de volta da Porta 5001 e atualizada com sucesso!");
+                    }
+                };
+                img.src = event.data.base64;
+            }
+        });
+
+        function openUltraLab(manualIndex) {
+            let index = (manualIndex !== undefined) ? manualIndex : window.lastActiveCanvasIndex;
+
+            if (index === undefined || index === null) {
+                // ... fallback anterior se chamado pelo teclado ou toolbar sem index explícito ...
+                if (window.currentView === 'read') {
+                    const readerDiv = document.getElementById("readerView");
+                    const containers = readerDiv.querySelectorAll('.canvas-container');
+                    let maxVisibleHeight = 0;
+                    let bestIndex = null;
+                    const windowHeight = window.innerHeight;
+
+                    containers.forEach(container => {
+                        const rect = container.getBoundingClientRect();
+                        const visibleTop = Math.max(0, rect.top);
+                        const visibleBottom = Math.min(windowHeight, rect.bottom);
+                        const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+
+                        if (visibleHeight > maxVisibleHeight) {
+                            maxVisibleHeight = visibleHeight;
+                            bestIndex = parseInt(container.id.split('_')[2]);
+                        }
+                    });
+                    if (bestIndex !== null) index = bestIndex;
+                } else {
+                    const activeCard = document.querySelector('.preview-card:not([style*="display: none"])');
+                    if (activeCard) {
+                        const container = activeCard.querySelector('.canvas-container[id^="container_"]');
+                        if (container) index = parseInt(container.id.split('_')[1]);
+                    }
+                }
+            }
+
+            window.lastActiveCanvasIndex = index; // Salva para o postMessage (retorno)
+
+            if (index === undefined || index === null || !window.canvases[index]) {
+                alert("Selecione ou clique em uma imagem para abri-la na Ultra IA.");
+                return;
+            }
+
+            const bgCanvas = document.getElementById(`bg_${index}`);
+            const fgCanvas = document.getElementById(`fg_${index}`);
+
+            const tempComp = document.createElement('canvas');
+            tempComp.width = bgCanvas.width;
+            tempComp.height = bgCanvas.height;
+            const cCtx = tempComp.getContext('2d');
+
+            cCtx.drawImage(bgCanvas, 0, 0);
+            cCtx.drawImage(fgCanvas, 0, 0);
+
+            currentUltraBase64 = tempComp.toDataURL("image/png");
+            window.open('http://localhost:5001', '_blank');
+        }
+
+        function undoUltraLab() {
+            let index = window.lastActiveCanvasIndex;
+            if (index === undefined || index === null) {
+                const activeCard = document.querySelector('.preview-card:not([style*="display: none"])');
+                if (activeCard) {
+                    const container = activeCard.querySelector('.canvas-container[id^="container_"]');
+                    if (container) index = parseInt(container.id.split('_')[1]);
+                }
+            }
+
+            if (index !== undefined && index !== null && window.canvases[index]) {
+                if (window.canvases[index].bgUltraBackup) {
+                    const bgCanvas = document.getElementById(`bg_${index}`);
+                    const bgCtx = bgCanvas.getContext('2d');
+                    bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+                    bgCtx.drawImage(window.canvases[index].bgUltraBackup, 0, 0);
+
+                    document.getElementById('btnUndoUltra').style.display = 'none'; // Esconder opção depois de reverter
+
+                    redrawFG(index);
+                    document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
+                    console.log("Revertido para o estado antes da IA.");
+                }
+            }
         }
 
         function activateEyeDropper() {
@@ -1669,7 +1891,14 @@
 
                 fgImg.onload = () => {
                     fgCtx.drawImage(fgImg, 0, 0, dw, dh);
-                    window.canvases[index].baseFG = fgImg; // Guarda para restauração
+
+                    // Armazenar como Canvas para permitir manipulação por scripts (ex: Ultra IA)
+                    const fgBaseCanvas = document.createElement('canvas');
+                    fgBaseCanvas.width = dw;
+                    fgBaseCanvas.height = dh;
+                    fgBaseCanvas.getContext('2d').drawImage(fgImg, 0, 0, dw, dh);
+                    window.canvases[index].baseFG = fgBaseCanvas;
+
                     attachDrawingEvents(fgCanvas, fgCtx, index);
                 };
                 fgImg.src = fgSrc;
@@ -1728,6 +1957,7 @@
                 }
 
                 if (isDown) {
+                    window.lastActiveCanvasIndex = index;
                     if (window.currentMode === 'measure') {
                         window.measureStartY = y;
                         window.isMeasuring = true;
@@ -1805,14 +2035,16 @@
                     window.isDrawing = true;
                     lastX = x; lastY = y;
 
-                    // Inicia novo caminho se for pintura
-                    if (window.currentMode === 'paint' || window.currentMode === 'restore') {
+                    // Inicia novo caminho se for pintura ou Ultra IA
+                    if (window.currentMode === 'paint' || window.currentMode === 'restore' || window.currentMode === 'ultra') {
                         const brushSizeEl = document.getElementById('brushSize');
                         const colorPickerEl = document.getElementById('colorPicker');
+                        // No modo Ultra, usamos uma cor fixa (roxo) para destacar a máscara da IA
+                        const drawColor = window.currentMode === 'ultra' ? '#a78bfa' : (colorPickerEl ? colorPickerEl.value : '#000000');
                         window.canvases[index].paths.push({
                             points: [{ x, y }],
                             size: brushSizeEl ? brushSizeEl.value : 20,
-                            color: colorPickerEl ? colorPickerEl.value : '#000000',
+                            color: drawColor,
                             mode: window.currentMode
                         });
                     }
@@ -1869,7 +2101,7 @@
                         return;
                     }
 
-                    if (window.isDrawing && (window.currentMode === 'paint' || window.currentMode === 'restore')) {
+                    if (window.isDrawing && (window.currentMode === 'paint' || window.currentMode === 'restore' || window.currentMode === 'ultra')) {
                         const currentPath = window.canvases[index].paths[window.canvases[index].paths.length - 1];
                         if (currentPath) currentPath.points.push({ x, y });
                         redrawFG(index);

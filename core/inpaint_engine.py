@@ -1,3 +1,6 @@
+import cv2
+import numpy as np
+
 class InpaintEngine:
     """Core engine for inpainting text/balloons."""
     def inpaint_native_ns(self, image: np.ndarray, mask: np.ndarray) -> np.ndarray:

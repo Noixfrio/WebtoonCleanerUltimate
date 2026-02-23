@@ -55,6 +55,10 @@ class FrontendError(BaseModel):
 class OCRRequest(BaseModel):
     image: str
 
+class UltraInpaintRequest(BaseModel):
+    image: str # Base64 da imagem (recorte ou full)
+    mask: str  # Base64 da máscara
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -221,6 +225,51 @@ def ocr_region(req: OCRRequest):
         logger.error(f"Erro no OCR Manual: {str(e)}")
         import traceback
         traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/api/ultra_inpaint")
+async def api_ultra_inpaint(req: UltraInpaintRequest):
+    try:
+        from core.advanced_inpaint import ultra_inpaint_area
+        
+        # Decode image
+        img_data = req.image.split(',')[1] if ',' in req.image else req.image
+        nparr = np.frombuffer(base64.b64decode(img_data), np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        # Decode máscara
+        mask_bytes = base64.b64decode(req.mask.split(',')[1])
+        nparr_mask = np.frombuffer(mask_bytes, np.uint8)
+        mask_raw = cv2.imdecode(nparr_mask, cv2.IMREAD_UNCHANGED)
+        
+        if len(mask_raw.shape) == 3 and mask_raw.shape[2] == 4:
+            mask_gray = mask_raw[:, :, 3] # Canal Alpha
+        elif len(mask_raw.shape) == 3:
+            mask_gray = cv2.cvtColor(mask_raw, cv2.COLOR_BGR2GRAY)
+        else:
+            mask_gray = mask_raw
+            
+        # Garantir binário conforme original app.py
+        _, mask_gray = cv2.threshold(mask_gray, 10, 255, cv2.THRESH_BINARY)
+
+        if img is None or mask_gray is None:
+            logger.error("Falha ao decodificar imagem ou máscara")
+            return JSONResponse(status_code=400, content={"error": "Dados de imagem ou máscara inválidos"})
+
+        logger.info(f"Recebido pedido Ultra Inpaint: img={img.shape}, mask={mask_gray.shape}, mask_max={np.max(mask_gray)}")
+        
+        # Executar Inpaint Híbrido Avançado
+        cleaned = await asyncio.to_thread(ultra_inpaint_area, img, mask_gray)
+        logger.info("Processamento Ultra Inpaint concluído")
+        
+        # Encode result
+        _, buffer = cv2.imencode('.png', cleaned)
+        encoded_img = base64.b64encode(buffer).decode('utf-8')
+        
+        return {"result": f"data:image/png;base64,{encoded_img}"}
+        
+    except Exception as e:
+        logger.error(f"Erro no Ultra Inpaint API: {str(e)}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 # IMPORTAÇÃO DOS SERVIÇOS EXPERIMENTAIS (Se existirem)
