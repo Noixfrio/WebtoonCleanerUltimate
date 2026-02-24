@@ -4,13 +4,23 @@ O **Webtoon Cleaner Ultimate** é uma ferramenta de IA para limpeza de mangás e
 
 ---
 
-## 📥 COMO BAIXAR (PASSO A PASSO)
-Se você não sabe usar o GitHub, siga estas instruções simples:
+## 📥 ESCOLHA SUA FORMA DE ACESSO
 
-1.  **Clique no Botão Verde:** No topo desta página, clique no botão que diz **"<> Code"** (cor verde).
-2.  **Baixe o ZIP:** No menu que abrir, clique na última opção: **"Download ZIP"**.
-3.  **Extraia os Arquivos:** Após baixar, abra o arquivo `.zip` e arraste a pasta para sua Área de Trabalho.
-4.  **Siga a Instalação:** Agora é só seguir os passos da seção **Windows** ou **Linux** abaixo!
+Existem três maneiras de usar o editor, escolha a que for melhor para você:
+
+### 1. 🚀 Executável Portátil (Maneira Mais Fácil)
+Não precisa instalar nada! Ideal para quem quer apenas usar o programa.
+*   **Baixar:** Acesse a página de [RELEASES](https://github.com/Noixfrio/WebtoonCleanerUltimate/releases) e baixe a versão mais nova para seu sistema (Windows ou Linux).
+*   **Como usar:** Extraia o arquivo e abra o executável `MangaCleaner`.
+
+### 2. 🐧 Linux / MacOS (Scripts Rápidos)
+Se você está no Linux, agora temos scripts que fazem tudo por você:
+1.  Clique duas vezes em `./INSTALAR_BIBLIOTECAS.sh` (faz o setup inicial).
+2.  Para usar, clique sempre em `./INICIAR_PROGRAMA.sh`.
+3.  Para gerar seu próprio executável, use `./GERAR_EXE.sh`.
+
+### 3. 🛠️ Instalação Tradicional (Para Desenvolvedores)
+Se você quer rodar o código fonte puro e fazer modificações:
 
 ---
 

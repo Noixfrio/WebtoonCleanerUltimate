@@ -1,13 +1,15 @@
-=== COMO BAIXAR E INSTALAR (GUIA RÁPIDO) ===
+=== FORMAS DE ACESSO (GUIA RÁPIDO) ===
 
-1. No site do GitHub, clique no botão VERDE escrito "Code".
-2. Clique em "Download ZIP".
-3. Extraia o conteúdo do ZIP para uma pasta no seu computador.
-4. Clique duas vezes no arquivo "1_BAIXAR_PYTHON_3.10.bat" e instale o programa que aparecer (IMPORTANTE: Marque a caixinha "Add Python to PATH").
-5. Depois de instalar o Python, clique duas vezes em "2_INSTALAR_BIBLIOTECAS.bat".
-6. Aguarde a tela preta terminar de baixar os arquivos da Inteligência Artificial.
-7. Para usar e desenhar, clique sempre em "3_INICIAR_PROGRAMA.bat".
-8. (OPCIONAL) Se quiser usar a IA de alta qualidade (Ultra), rode o arquivo "INSTALAR_IA_ULTRA.bat".
-9. O seu navegador vai abrir em http://localhost:5000 pronto para usar!
+OPÇÃO A: EXECUTÁVEL (MAIS RÁPIDO)
+1. Vá em https://github.com/Noixfrio/WebtoonCleanerUltimate/releases
+2. Baixe o arquivo mais recente para seu sistema (Windows ou Linux).
+3. Extraia e abra "MangaCleaner".
 
-Dúvidas? Leia o arquivo README.md para mais detalhes.
+OPÇÃO B: INSTALAÇÃO MANUAL (CÓDIGO FONTE)
+1. No site do GitHub, clique no botão VERDE escrito "Code" e "Download ZIP".
+2. Extraia o conteúdo para uma pasta.
+3. Windows: Use "1_BAIXAR_PYTHON_3.10.bat" e depois "2_INSTALAR_BIBLIOTECAS.bat".
+4. Linux: Use "./INSTALAR_BIBLIOTECAS.sh".
+5. Para abrir, use "3_INICIAR_PROGRAMA.bat" (Windows) ou "./INICIAR_PROGRAMA.sh" (Linux).
+
+Dúvidas? Leia o README.md para detalhes avançados.
