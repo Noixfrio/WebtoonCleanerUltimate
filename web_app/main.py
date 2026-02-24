@@ -39,6 +39,7 @@ def get_resource_path(relative_path):
         ]
         for base in base_options:
             candidate = base / relative_path
+            logger.info(f"Checking resource at: {candidate}")
             if candidate.exists():
                 logger.info(f"Resource found: {relative_path} -> {candidate}")
                 return candidate
@@ -66,11 +67,11 @@ os.makedirs("outputs", exist_ok=True)
 # Templates can be read-only
 templates = Jinja2Templates(directory=str(templates_dir))
 
-# Static mount (fails if directory is missing)
-if not static_dir.exists():
-    logger.error(f"CRITICAL: Static directory missing at {static_dir}")
-    # Create empty to avoid crash
-    os.makedirs(str(static_dir), exist_ok=True)
+# Resource protection: ensure directories exist before mounting to avoid Starlette crash
+for d_name, d_path in [("static", static_dir), ("fonts", fonts_dir)]:
+    if not d_path.exists():
+        logger.warning(f"Directory {d_name} missing at {d_path}. Creating local fallback.")
+        os.makedirs(str(d_path), exist_ok=True)
 
 app.mount("/processed", StaticFiles(directory=OUTPUT_DIR), name="processed")
 app.mount("/assets/fonts", StaticFiles(directory=str(fonts_dir)), name="fonts")
