@@ -1,17 +1,25 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 block_cipher = None
 
-# Adicionando pastas de dados
+# Coleta dados automáticos de bibliotecas problemáticas
+datas = collect_data_files('easyocr')
+datas += collect_data_files('skimage')
+datas += collect_data_files('fastapi')
+
+# Adicionando pastas de dados do projeto
 added_files = [
     ('web_app/templates', 'web_app/templates'),
     ('web_app/static', 'web_app/static'),
     ('assets', 'assets'),
     ('models', 'models'),
 ]
+datas += added_files
 
-# Importações que o PyInstaller às vezes não detecta automaticamente no FastAPI/Uvicorn
-hidden_imports = [
+# Importações que o PyInstaller às vezes não detecta automaticamente
+hidden_imports = collect_submodules('uvicorn')
+hidden_imports += [
     'uvicorn.logging',
     'uvicorn.loops',
     'uvicorn.loops.auto',
@@ -25,13 +33,20 @@ hidden_imports = [
     'fastapi',
     'jinja2',
     'anyio._backends._asyncio',
+    'easyocr',
+    'onnxruntime',
+    'cv2',
+    'numpy',
+    'torch',
+    'torchvision',
+    'PIL',
 ]
 
 a = Analysis(
     ['launcher.py'],
-    pathex=[],
+    pathex=[os.getcwd()],
     binaries=[],
-    datas=added_files,
+    datas=datas,
     hiddenimports=hidden_imports,
     hookspath=[],
     hooksconfig={},
@@ -54,14 +69,14 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    console=True, # Mantemos console para ver logs da IA
+    upx=False, # Desativamos UPX para evitar falsos positivos de antivirus e lentidão
+    console=True, 
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None # Pode ser adicionado um .ico aqui se houver
+    icon=None 
 )
 
 coll = COLLECT(
@@ -70,7 +85,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name='MangaCleaner',
 )
