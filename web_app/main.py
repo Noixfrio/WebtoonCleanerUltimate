@@ -23,6 +23,26 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
 
+class AutoCleanRequest(BaseModel):
+    image: str
+
+class SaveImageRequest(BaseModel):
+    session: str
+    filename: str
+    image: str
+
+class OCRRequest(BaseModel):
+    image: str
+
+class FrontendError(BaseModel):
+    message: str
+    trace: str
+
+class UltraInpaintRequest(BaseModel):
+    image: str
+    mask: str
+    use_frequency_separation: bool = True
+
 from core.pipeline import MangaCleanerPipeline
 from core.font_manager import WebtoonFontManager
 
@@ -369,7 +389,6 @@ async def api_ultra_inpaint(req: UltraInpaintRequest):
         # Encode result
         _, buffer = cv2.imencode('.png', cleaned)
         encoded_img = base64.b64encode(buffer).decode('utf-8')
-        
         return {"result": f"data:image/png;base64,{encoded_img}"}
         
     except Exception as e:
@@ -395,3 +414,28 @@ async def import_font(file: UploadFile = File(...)):
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
+@app.post("/api/save_image_to_session")
+async def save_image_to_session(req: SaveImageRequest):
+    try:
+        session_folder = os.path.join(OUTPUT_DIR, req.session)
+        if not os.path.exists(session_folder):
+            os.makedirs(session_folder, exist_ok=True)
+            
+        # Determinar caminho final
+        # Se o filename já começa com after_, mantemos, senão adicionamos
+        clean_name = req.filename if req.filename.startswith("after_") else "after_" + req.filename
+        file_path = os.path.join(session_folder, clean_name)
+        
+        # Decode base64
+        img_data = req.image.split(',')[1] if ',' in req.image else req.image
+        img_bytes = base64.b64decode(img_data)
+        
+        with open(file_path, "wb") as f:
+            f.write(img_bytes)
+            
+        logger.info(f"Imagem salva com sucesso em: {file_path}")
+        return {"status": "success", "path": file_path}
+    except Exception as e:
+        logger.error(f"Erro ao salvar imagem na sessão: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": str(e)})

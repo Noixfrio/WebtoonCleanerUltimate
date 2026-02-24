@@ -1882,6 +1882,22 @@
                         redrawFG(index);
                         document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
                         console.log("Imagem recebida de volta do Lab Ultra e atualizada com sucesso!");
+
+                        // PERSISTÊNCIA NO SERVIDOR: Salva a imagem no disco para não perder ao recarregar
+                        if (sessionId && window.canvases[index].fileName) {
+                            fetch("/api/save_image_to_session", {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    session: sessionId,
+                                    filename: window.canvases[index].fileName,
+                                    image: event.data.base64
+                                })
+                            })
+                                .then(r => r.json())
+                                .then(d => console.log("Persistência no servidor concluída:", d))
+                                .catch(e => console.error("Erro na persistência:", e));
+                        }
                     }
                 };
                 img.src = event.data.base64;
