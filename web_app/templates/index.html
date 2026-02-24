@@ -1849,7 +1849,7 @@
             if (event.data && event.data.type === "ULTRA_RESULT") {
                 const img = new Image();
                 img.onload = () => {
-                    let index = window.lastActiveCanvasIndex;
+                    let index = event.data.index !== undefined ? event.data.index : window.lastActiveCanvasIndex;
                     if (index !== undefined && index !== null && window.canvases[index]) {
                         const bgCanvas = document.getElementById(`bg_${index}`);
                         const bgCtx = bgCanvas.getContext('2d');
@@ -1864,11 +1864,14 @@
 
                         bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
 
+                        // ATUALIZAR A FONTE ORIGINAL (Persistência para o Save)
+                        window.canvases[index].sourceImg = img;
+
                         // Mostrar botão Reverter
                         const btnUndo = document.getElementById('btnUndoUltra');
                         if (btnUndo) btnUndo.style.display = 'inline-block';
 
-                        // Limpar os traços e textos anteriores, pois agora fazem parte do fundo (foram processados na 5001)
+                        // Limpar os traços e textos anteriores, pois agora fazem parte do fundo (foram processados)
                         const fgCanvas = document.getElementById(`fg_${index}`);
                         fgCanvas.getContext('2d').clearRect(0, 0, fgCanvas.width, fgCanvas.height);
                         window.canvases[index].paths = [];
@@ -1876,7 +1879,7 @@
 
                         redrawFG(index);
                         document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
-                        console.log("Imagem recebida de volta da Porta 5001 e atualizada com sucesso!");
+                        console.log("Imagem recebida de volta do Lab Ultra e atualizada com sucesso!");
                     }
                 };
                 img.src = event.data.base64;
@@ -1925,17 +1928,24 @@
 
             const bgCanvas = document.getElementById(`bg_${index}`);
             const fgCanvas = document.getElementById(`fg_${index}`);
+            const canvasData = window.canvases[index];
 
             const tempComp = document.createElement('canvas');
-            tempComp.width = bgCanvas.width;
-            tempComp.height = bgCanvas.height;
+            tempComp.width = canvasData.natWidth || bgCanvas.width;
+            tempComp.height = canvasData.natHeight || bgCanvas.height;
             const cCtx = tempComp.getContext('2d');
 
-            cCtx.drawImage(bgCanvas, 0, 0);
-            cCtx.drawImage(fgCanvas, 0, 0);
+            // Enviar versão em ALTA RESOLUÇÃO para o Lab Ultra
+            const bgSource = canvasData.sourceImg || bgCanvas;
+            cCtx.drawImage(bgSource, 0, 0, tempComp.width, tempComp.height);
+
+            // Se houver desenhos manuais no FG, incluímos eles também para a Ultra IA trabalhar por cima
+            if (fgCanvas.width > 0) {
+                cCtx.drawImage(fgCanvas, 0, 0, tempComp.width, tempComp.height);
+            }
 
             currentUltraBase64 = tempComp.toDataURL("image/png");
-            window.open('/ultra', '_blank');
+            window.open(`/ultra?index=${index}`, '_blank');
         }
 
         function undoUltraLab() {

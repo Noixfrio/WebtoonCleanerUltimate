@@ -134,6 +134,9 @@
         dropzone.ondragover = (e) => e.preventDefault();
         dropzone.ondrop = (e) => { e.preventDefault(); loadFile(e.dataTransfer.files[0]); };
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const canvasIndex = urlParams.get('index');
+
         window.onload = () => {
             if (window.opener) {
                 window.opener.postMessage("ULTRA_READY", window.location.origin);
@@ -220,7 +223,7 @@
         async function process() {
             if (!imageLoaded) return;
             const btn = document.getElementById('btnRun');
-            document.getElementById('status').innerText = "Processando na Porta 5001...";
+            document.getElementById('status').innerText = "Processando no Servidor...";
             btn.disabled = true;
 
             const res = await fetch('/api/ultra_inpaint', {
@@ -244,7 +247,11 @@
 
                     if (window.opener) {
                         try {
-                            window.opener.postMessage({ type: "ULTRA_RESULT", base64: bgCanvas.toDataURL("image/png") }, window.location.origin);
+                            window.opener.postMessage({
+                                type: "ULTRA_RESULT",
+                                index: canvasIndex,
+                                base64: bgCanvas.toDataURL("image/png")
+                            }, window.location.origin);
                             document.getElementById('status').innerText = "Salvo de volta no Editor Principal!";
                         } catch (e) {
                             console.error(e);
