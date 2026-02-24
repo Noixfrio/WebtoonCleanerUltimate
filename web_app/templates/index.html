@@ -553,6 +553,7 @@
         }
 
         // --- 2. Estado Global ---
+        window.canvases = [];
         let selectedFiles = [];
         let sessionId = null;
         let ws = null;
@@ -1850,8 +1851,9 @@
                 const img = new Image();
                 img.onload = () => {
                     let index = event.data.index !== undefined ? event.data.index : window.lastActiveCanvasIndex;
-                    if (index !== undefined && index !== null && window.canvases[index]) {
+                    if (index !== undefined && index !== null && window.canvases && window.canvases[index]) {
                         const bgCanvas = document.getElementById(`bg_${index}`);
+                        if (!bgCanvas) return;
                         const bgCtx = bgCanvas.getContext('2d');
 
                         // SALVAR BACKUP ANTES DE SOBRESCREVER (Permite Desfazer)
@@ -1928,6 +1930,7 @@
 
             const bgCanvas = document.getElementById(`bg_${index}`);
             const fgCanvas = document.getElementById(`fg_${index}`);
+            if (!bgCanvas || !fgCanvas) return;
             const canvasData = window.canvases[index];
 
             const tempComp = document.createElement('canvas');
