@@ -13,6 +13,8 @@ import logging
 import subprocess
 import base64
 import traceback
+import sys
+from pathlib import Path
 from pydantic import BaseModel
 
 from fastapi import FastAPI, UploadFile, File, WebSocket, BackgroundTasks, WebSocketDisconnect
@@ -24,23 +26,55 @@ from fastapi import Request
 from core.pipeline import MangaCleanerPipeline
 from core.font_manager import WebtoonFontManager
 
+# Robust resource path resolution for PyInstaller
+def get_resource_path(relative_path):
+    """ Resolve paths for resources, checking both local and bundled locations. """
+    if getattr(sys, 'frozen', False):
+        # sys._MEIPASS is the temp folder or bundle root
+        base_options = [
+            Path(sys._MEIPASS),
+            Path(sys._MEIPASS) / "_internal",
+            Path(sys.executable).parent,
+            Path(sys.executable).parent / "_internal"
+        ]
+        for base in base_options:
+            candidate = base / relative_path
+            if candidate.exists():
+                logger.info(f"Resource found: {relative_path} -> {candidate}")
+                return candidate
+        logger.warning(f"Resource NOT found in any base: {relative_path}")
+        return Path(relative_path) # Fallback to relative
+    return Path(__file__).parent.parent / relative_path
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Webtoon Cleaner Ultimate")
 
-# Ensure directories exist
-templates = Jinja2Templates(directory="web_app/templates")
+# Resolve directories
+templates_dir = get_resource_path("web_app/templates")
+static_dir = get_resource_path("web_app/static")
+fonts_dir = get_resource_path("assets/fonts")
+
+# Fallback creation for directories that must be writable (outside the bundle)
+# We want processed/inputs/outputs in the same folder as the EXE
 OUTPUT_DIR = "processed"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs("assets/fonts", exist_ok=True)
 os.makedirs("inputs", exist_ok=True)
 os.makedirs("outputs", exist_ok=True)
 
-# Mount static files for previews and processed images
+# Templates can be read-only
+templates = Jinja2Templates(directory=str(templates_dir))
+
+# Static mount (fails if directory is missing)
+if not static_dir.exists():
+    logger.error(f"CRITICAL: Static directory missing at {static_dir}")
+    # Create empty to avoid crash
+    os.makedirs(str(static_dir), exist_ok=True)
+
 app.mount("/processed", StaticFiles(directory=OUTPUT_DIR), name="processed")
-app.mount("/assets/fonts", StaticFiles(directory="assets/fonts"), name="fonts")
-app.mount("/static", StaticFiles(directory="web_app/static"), name="static")
+app.mount("/assets/fonts", StaticFiles(directory=str(fonts_dir)), name="fonts")
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 pipeline = MangaCleanerPipeline()
 font_manager = WebtoonFontManager()
