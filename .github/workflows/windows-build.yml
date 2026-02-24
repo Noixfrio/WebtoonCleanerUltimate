@@ -22,6 +22,11 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
+      - name: Create missing directories
+        run: |
+          mkdir -p assets
+          mkdir -p models
+
       - name: Build with PyInstaller
         run: |
           pyinstaller --clean manga_cleaner.spec

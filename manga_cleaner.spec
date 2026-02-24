@@ -8,13 +8,11 @@ datas = collect_data_files('easyocr')
 datas += collect_data_files('skimage')
 datas += collect_data_files('fastapi')
 
-# Adicionando pastas de dados do projeto
-added_files = [
-    ('web_app/templates', 'web_app/templates'),
-    ('web_app/static', 'web_app/static'),
-    ('assets', 'assets'),
-    ('models', 'models'),
-]
+# Adicionando pastas de dados do projeto de forma segura
+added_files = []
+for src_path in ['web_app/templates', 'web_app/static', 'assets', 'models']:
+    if os.path.exists(src_path):
+        added_files.append((src_path, src_path))
 datas += added_files
 
 # Importações que o PyInstaller às vezes não detecta automaticamente
