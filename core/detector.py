@@ -14,37 +14,41 @@ class TextDetector:
     """
     _instance: Optional['TextDetector'] = None
     _lock = threading.Lock()
-    ocr: easyocr.Reader
+    _ocr: Optional[easyocr.Reader] = None
     
     def __new__(cls):
         with cls._lock:
             if cls._instance is None:
-                try:
-                    logger.info("Initializing EasyOCR Singleton Instance", extra={
-                        "extra": {
-                            "lang": [settings.OCR_LANG, 'en'],
-                            "use_gpu": settings.ENABLE_GPU
-                        }
-                    })
-                    cls._instance = super(TextDetector, cls).__new__(cls)
-                    # EasyOCR initialization
-                    # Note: easyocr uses 'ch_sim' or 'ch_tra' for chinese, mapping settings.OCR_LANG if needed
-                    # but here we'll assume settings matches easyocr conventions or use 'en' as fallback
-                    # Portability: Define local directory for weights if not provided
-                    model_path = os.path.join(os.getcwd(), "assets", "ocr")
-                    os.makedirs(model_path, exist_ok=True)
-                    
-                    cls._instance.ocr = easyocr.Reader(
-                        ['ch_sim', 'en'] if settings.OCR_LANG == 'ch' else [settings.OCR_LANG, 'en'],
-                        gpu=settings.ENABLE_GPU,
-                        model_storage_directory=model_path
-                    )
-                    logger.info("EasyOCR Engine initialized successfully")
-                except Exception as e:
-                    logger.critical(f"OCR Initialization Failed: {str(e)}")
-                    cls._instance = None
-                    raise OCRInitializationError(f"Failed to start OCR engine: {str(e)}")
+                cls._instance = super(TextDetector, cls).__new__(cls)
         return cls._instance
+
+    @property
+    def ocr(self) -> easyocr.Reader:
+        """Lazy loader for EasyOCR engine."""
+        if self._ocr is None:
+            with self._lock:
+                if self._ocr is None:
+                    try:
+                        logger.info("Initializing EasyOCR (Lazy Loading)...", extra={
+                            "extra": {
+                                "lang": [settings.OCR_LANG, 'en'],
+                                "use_gpu": settings.ENABLE_GPU
+                            }
+                        })
+                        # Portability: Define local directory for weights if not provided
+                        model_path = os.path.join(os.getcwd(), "assets", "ocr")
+                        os.makedirs(model_path, exist_ok=True)
+                        
+                        self._ocr = easyocr.Reader(
+                            ['ch_sim', 'en'] if settings.OCR_LANG == 'ch' else [settings.OCR_LANG, 'en'],
+                            gpu=settings.ENABLE_GPU,
+                            model_storage_directory=model_path
+                        )
+                        logger.info("EasyOCR Engine initialized successfully")
+                    except Exception as e:
+                        logger.critical(f"OCR Initialization Failed: {str(e)}")
+                        raise OCRInitializationError(f"Failed to start OCR engine: {str(e)}")
+        return self._ocr
 
     def detect(self, image: np.ndarray, job_id: str = "unknown") -> List[Dict[str, Any]]:
         """

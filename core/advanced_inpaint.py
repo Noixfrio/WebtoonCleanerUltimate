@@ -64,7 +64,6 @@ class LaMaInpainter:
         path1 = os.path.join(self.base_dir, "assets", "lama.onnx")
         path2 = os.path.join(self.base_dir, "models", "lama_512.onnx")
         self.model_path = path1 if os.path.exists(path1) else path2
-        self._load_model()
         self._initialized = True
 
     def _load_model(self):
@@ -84,6 +83,9 @@ class LaMaInpainter:
     def is_available(self): return self._session is not None
 
     def process(self, image: np.ndarray, mask: np.ndarray) -> np.ndarray:
+        if self._session is None:
+            self._load_model()
+        
         if not self.is_available(): return image
         
         # Exact logic from tools/ultra_cleaner/lama_wrapper.py
