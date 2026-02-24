@@ -4,6 +4,12 @@ O **Webtoon Cleaner Ultimate** é uma ferramenta de IA para limpeza de mangás e
 
 ---
 
+## 🎥 Demonstração em Vídeo
+Assista ao vídeo demonstrativo para ver o Manga Cleaner v2 em ação:
+[![Manga Cleaner v2 Demo](https://img.youtube.com/vi/cSz-FMIetHo/0.jpg)](https://youtu.be/cSz-FMIetHo)
+
+---
+
 ## 📥 ESCOLHA SUA FORMA DE ACESSO
 
 Existem três maneiras de usar o editor, escolha a que for melhor para você:
