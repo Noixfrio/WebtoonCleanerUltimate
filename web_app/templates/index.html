@@ -434,6 +434,8 @@
             <button id="startBtn" class="btn-start" onclick="start()" disabled>Iniciar Processamento</button>
             <button id="browserEditBtn" class="btn-download" style="background-color: #8b5cf6;"
                 onclick="openInHTMLEditor()" disabled>🎨 Editar no Navegador</button>
+            <button id="btnProEditor" class="btn-download" style="background-color: #f59e0b;"
+                onclick="window.open('http://localhost:5002', '_blank')" disabled>🚀 Abrir Editor Pro (5002)</button>
         </div>
     </div>
 
@@ -580,6 +582,7 @@
                 dropzone.innerText = `${files.length} arquivos carregados`;
                 startBtn.disabled = false;
                 document.getElementById('browserEditBtn').disabled = false;
+                document.getElementById('btnProEditor').disabled = false;
             } else {
                 startBtn.disabled = true;
                 document.getElementById('browserEditBtn').disabled = true;
@@ -621,6 +624,7 @@
                 if (info.status === "cancelled") {
                     document.getElementById("statusText").innerText = "Processo Cancelado.";
                     startBtn.disabled = false;
+                    document.getElementById('btnProEditor').disabled = false;
                 }
             };
         }
@@ -748,39 +752,37 @@
             if (!document.getElementById('mangaToolbar')) {
                 injectToolbar();
             }
-            // FontSystem inicializa via DOMContentLoaded
 
+            // FontSystem inicializa via DOMContentLoaded
             const fileNames = Array.from(selectedFiles).map(f => f.name);
 
             // Mostra o toggler de visualização
             document.getElementById("viewToggler").style.display = "flex";
             switchView('edit');
 
+            // Carregamento SEQUENCIAL para evitar travamentos de memória em imagens Webtoon (Longas)
             for (let i = 0; i < selectedFiles.length; i++) {
                 const file = selectedFiles[i];
                 const card = document.createElement("div");
                 card.className = "preview-card";
-
                 const fileUrl = URL.createObjectURL(file);
-                // No modo editor manual, o FG começa igual ao BG (ou vazio, mas aqui vamos clonar o BG pra editar em cima)
 
                 card.innerHTML = `
                 <div class="label" style="display:flex; justify-content:space-between; width:100%;">
                     <span>${file.name} (Local)</span>
-                    <button class="tool-btn" style="padding: 4px 8px; font-size:12px;" onclick="downloadEdited(${i}, '${file.name}')">💾 Salvar Edição</button>
+                    <div style="display:flex; gap:8px;">
+                        <button class="tool-btn" style="padding: 4px 8px; font-size:12px; border-color: #f59e0b; color: #fbbf24;" onclick="openProfessionalEditor(${i})">🚀 Abrir no Pro</button>
+                        <button class="tool-btn" style="padding: 4px 8px; font-size:12px;" onclick="downloadEdited(${i}, '${file.name}')">💾 Salvar Edição</button>
+                    </div>
                 </div>
-                <!-- Box de Edição Centralizado -->
                 <div class="zoom-wrapper" style="display:flex; justify-content:center; gap:40px; padding: 20px 0;">
-                     <!-- Lado Original -->
-                     <div style="display:flex; flex-direction:column; align-items:center;">
+                    <div style="display:flex; flex-direction:column; align-items:center;">
                         <div style="font-size:12px; font-weight:bold; color:#94a3b8; margin-bottom:5px;">ORIGINAL</div>
                         <div class="canvas-container" style="transform-origin: top center; transition: transform 0.1s ease-out;">
                             <canvas id="ref_${i}"></canvas>
                         </div>
-                     </div>
-
-                     <!-- Lado Editado -->
-                     <div style="display:flex; flex-direction:column; align-items:center;">
+                    </div>
+                    <div style="display:flex; flex-direction:column; align-items:center;">
                         <div style="font-size:12px; font-weight:bold; color:#60a5fa; margin-bottom:5px;">EDITOR</div>
                         <div class="canvas-container" id="container_${i}" style="position:relative; transform-origin: top center; transition: transform 0.1s ease-out;">
                             <button class="ultra-float-btn" onclick="event.stopPropagation(); openUltraLab(${i})">
@@ -789,18 +791,75 @@
                             <canvas id="bg_${i}" class="canvas-bg"></canvas>
                             <canvas id="fg_${i}" class="canvas-fg"></canvas>
                         </div>
-                     </div>
+                    </div>
                 </div>`;
                 previewDiv.appendChild(card);
 
-                // Usaremos FG transparente para o "Restore" fazer sentido depois de pintar
-                setupLocalCanvas(i, file, fileUrl);
+                // Aguardamos cada imagem carregar antes de iniciar a próxima
+                await new Promise((resolve) => {
+                    setupLocalCanvas(i, file, fileUrl, resolve);
+                });
             }
+        }
+
+        /**
+         * Envia a imagem atual (BG + Edições) para o Editor Profissional na porta 5002
+         */
+        async function openProfessionalEditor(index) {
+            const data = window.canvases[index];
+            if (!data) return;
+
+            // Criar um canvas temporário para mesclar tudo antes de enviar
+            const tempComp = document.createElement('canvas');
+            tempComp.width = data.bg.width;
+            tempComp.height = data.bg.height;
+            const tCtx = tempComp.getContext('2d');
+
+            // Desenhar fundo
+            tCtx.drawImage(data.bg, 0, 0);
+            // Desenhar edições (Pintura e Textos Consolidados)
+            tCtx.drawImage(data.fg, 0, 0);
+
+            const base64 = tempComp.toDataURL("image/png");
+            const editorUrl = `http://localhost:5002/?index=${index}`;
+            const editorWindow = window.open(editorUrl, '_blank');
+
+            // Salvar para o listener de prontidão (Ready)
+            window.pendingProfessionalImage = base64;
+
+            // Escutar quando o editor nos avisar que carregou
+            const messageHandler = (event) => {
+                if (event.data === "EDITOR_READY") {
+                    console.log("[INTEGRAÇÃO] Editor Pro avisou que está pronto. Enviando dados...");
+
+                    // 1. Envia a imagem base (Fundo + Pintura atual)
+                    editorWindow.postMessage({ type: "LOAD_IMAGE", base64: base64 }, "*");
+
+                    // 2. Se tivermos um estado Konva anterior, enviamos para permitir RE-EDIÇÃO
+                    if (data.proState) {
+                        console.log("[INTEGRAÇÃO] Enviando camadas editáveis (Konva JSON) para o Pro...");
+                        editorWindow.postMessage({ type: "LOAD_PROJECT", json: data.proState }, "*");
+                    }
+
+                    window.removeEventListener("message", messageHandler);
+                }
+            };
+            window.addEventListener("message", messageHandler);
+
+            // Fallback: Tenta enviar após alguns segundos se o postMessage falhar
+            setTimeout(() => {
+                if (editorWindow) {
+                    editorWindow.postMessage({ type: "LOAD_IMAGE", base64: base64 }, "*");
+                    if (data.proState) {
+                        editorWindow.postMessage({ type: "LOAD_PROJECT", json: data.proState }, "*");
+                    }
+                }
+            }, 3000);
         }
 
         function injectToolbar() {
             const toolbarHTML = `
-            <div id="mangaToolbar" class="toolbar">
+                <div id="mangaToolbar" class="toolbar">
                 <div class="toolbar-group">
                     <button class="tool-btn" id="btnPaint" onclick="setMode('paint')">🖌️ Pintar</button>
                     <button class="tool-btn restore" id="btnRestore" onclick="setMode('restore')">🪄 Restauração</button>
@@ -816,43 +875,43 @@
                     <input type="color" id="colorPicker" value="#000000" title="Cor do Pincel">
                 </div>
 
-                <!-- Configurações de Pincel (Mostradas apenas em Paint/Restore) -->
+                <!--Configurações de Pincel(Mostradas apenas em Paint / Restore)-->
                 <div class="toolbar-group" id="brushSettings">
                     <label style="font-size: 11px; color: #94a3b8;">Pincel:</label>
                     <input type="range" id="brushSize" min="2" max="100" value="20">
                 </div>
 
-                <!-- Configurações de Texto (Mostradas apenas em Text) -->
-                <div class="toolbar-group" id="textSettings" style="display: none; flex-wrap: wrap; justify-content: center; gap: 10px; border-left: 2px solid #334155; padding-left: 15px;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <label style="font-size: 11px; color: #94a3b8;">Cat:</label>
-                        <select id="font-category" style="background: #1e293b; color: white; border: 1px solid #334155; border-radius: 4px; font-size: 11px; padding: 2px; max-width: 80px;"></select>
+                <!--Configurações de Texto(Mostradas apenas em Text)-->
+            <div class="toolbar-group" id="textSettings" style="display: none; flex-wrap: wrap; justify-content: center; gap: 10px; border-left: 2px solid #334155; padding-left: 15px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <label style="font-size: 11px; color: #94a3b8;">Cat:</label>
+                    <select id="font-category" style="background: #1e293b; color: white; border: 1px solid #334155; border-radius: 4px; font-size: 11px; padding: 2px; max-width: 80px;"></select>
 
-                        <label style="font-size: 11px; color: #94a3b8;">Fonte:</label>
-                        <select id="font-name" style="background: #1e293b; color: white; border: 1px solid #334155; border-radius: 4px; font-size: 11px; padding: 2px; max-width: 100px; text-overflow: ellipsis;"></select>
+                    <label style="font-size: 11px; color: #94a3b8;">Fonte:</label>
+                    <select id="font-name" style="background: #1e293b; color: white; border: 1px solid #334155; border-radius: 4px; font-size: 11px; padding: 2px; max-width: 100px; text-overflow: ellipsis;"></select>
 
-                        <button class="tool-btn" style="padding: 2px 6px; font-size: 10px;" title="Importar Fonte Customizada" onclick="importCustomFont()">➕ Font</button>
-                    </div>
+                    <button class="tool-btn" style="padding: 2px 6px; font-size: 10px;" title="Importar Fonte Customizada" onclick="importCustomFont()">➕ Font</button>
+                </div>
 
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <label style="font-size: 11px; color: #94a3b8;">Tam:</label>
-                        <input type="range" id="textSize" min="10" max="150" value="30" style="width: 70px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <label style="font-size: 11px; color: #94a3b8;">Tam:</label>
+                    <input type="range" id="textSize" min="10" max="150" value="30" style="width: 70px;">
                         <span id="textSizeValue" style="font-size: 11px; min-width: 25px; color: white;">30px</span>
 
                         <input type="color" id="textColorPicker" value="#000000" title="Cor do Texto" style="margin-left:5px;">
 
-                        <div style="display:flex; border-left: 1px solid #334155; padding-left: 8px; margin-left: 4px; gap: 6px;">
-                            <button class="tool-btn" style="padding: 2px 6px; font-size: 10px;" id="btnMeasure" onclick="setMode('measure')" title="Medir Tamanho">📏 Medir</button>
-                            <button class="tool-btn" style="padding: 2px 6px; font-size: 10px; border-color: #3b82f6;" onclick="editTextContent()" title="Editar Texto">📝 Editar</button>
-                            <button class="tool-btn" style="padding: 2px 6px; font-size: 10px; border-color: #ef4444; color: #ef4444;" onclick="deleteSelectedText()" title="Apagar Texto">🗑️ Apagar</button>
+                            <div style="display:flex; border-left: 1px solid #334155; padding-left: 8px; margin-left: 4px; gap: 6px;">
+                                <button class="tool-btn" style="padding: 2px 6px; font-size: 10px;" id="btnMeasure" onclick="setMode('measure')" title="Medir Tamanho">📏 Medir</button>
+                                <button class="tool-btn" style="padding: 2px 6px; font-size: 10px; border-color: #3b82f6;" onclick="editTextContent()" title="Editar Texto">📝 Editar</button>
+                                <button class="tool-btn" style="padding: 2px 6px; font-size: 10px; border-color: #ef4444; color: #ef4444;" onclick="deleteSelectedText()" title="Apagar Texto">🗑️ Apagar</button>
+                            </div>
                         </div>
-                    </div>
                 </div>
 
                 <div class="toolbar-group">
                     <label style="font-size: 11px; color: #94a3b8;">🔍 Zoom:</label>
                     <input type="range" id="zoomLevel" min="0.5" max="3" step="0.1" value="1" oninput="updateZoom()">
-                    <span id="zoomValue" style="font-size: 11px; min-width: 30px;">100%</span>
+                        <span id="zoomValue" style="font-size: 11px; min-width: 30px;">100%</span>
                 </div>
 
                 <div class="toolbar-group">
@@ -864,7 +923,7 @@
             if (typeof initFontSystem === 'function') initFontSystem();
         }
 
-        function setupLocalCanvas(index, file, src) {
+        function setupLocalCanvas(index, file, src, callback) {
             const bgCanvas = document.getElementById(`bg_${index}`);
             const fgCanvas = document.getElementById(`fg_${index}`);
             const bgCtx = bgCanvas.getContext('2d', { willReadFrequently: true });
@@ -907,6 +966,12 @@
                 refCtx.drawImage(img, 0, 0, dw, dh);
                 // No editor local, começamos com o FG vazio (transparente) para que o usuário pinte por cima
                 attachDrawingEvents(fgCanvas, fgCtx, index);
+
+                if (callback) callback();
+            };
+            img.onerror = () => {
+                console.error("Erro ao carregar imagem:", file.name);
+                if (callback) callback();
             };
             img.src = src;
         }
@@ -931,21 +996,24 @@
                 card.innerHTML = `
                 <div class="label" style="display:flex; justify-content:space-between; width:100%;">
                     <span>${name}</span>
-                    <button class="tool-btn" style="padding: 4px 8px; font-size:12px;" onclick="downloadEdited(${index}, '${name}')">💾 Salvar Edição</button>
+                    <div style="display:flex; gap:8px;">
+                        <button class="tool-btn" style="padding: 4px 8px; font-size:12px; border-color: #f59e0b; color: #fbbf24;" onclick="openProfessionalEditor(${index})">🚀 Abrir no Pro</button>
+                        <button class="tool-btn" style="padding: 4px 8px; font-size:12px;" onclick="downloadEdited(${index}, '${name}')">💾 Salvar Edição</button>
+                    </div>
                 </div>
                 <div class="zoom-wrapper">
                      <!-- Lado Original -->
-                     <div style="display:flex; flex-direction:column; align-items:center; flex-shrink: 0;">
+                     <div style="display:flex; flex-direction:column; align-items:center;">
                         <div style="font-size:12px; font-weight:bold; color:#94a3b8; margin-bottom:5px;">ORIGINAL</div>
-                        <div class="canvas-container" style="transform-origin: top left; transition: transform 0.1s ease-out;">
+                        <div class="canvas-container" style="transform-origin: top center; transition: transform 0.1s ease-out;">
                             <canvas id="ref_${index}"></canvas>
                         </div>
                      </div>
 
                      <!-- Lado Editado -->
-                     <div style="display:flex; flex-direction:column; align-items:center; flex-shrink: 0;">
+                     <div style="display:flex; flex-direction:column; align-items:center;">
                         <div style="font-size:12px; font-weight:bold; color:#60a5fa; margin-bottom:5px;">EDITOR</div>
-                        <div class="canvas-container" id="container_${index}" style="transform-origin: top left; transition: transform 0.1s ease-out;">
+                        <div class="canvas-container" id="container_${index}" style="position:relative; transform-origin: top center; transition: transform 0.1s ease-out;">
                             <canvas id="bg_${index}" class="canvas-bg"></canvas>
                             <canvas id="fg_${index}" class="canvas-fg"></canvas>
                         </div>
@@ -1480,6 +1548,13 @@
 
                 readerDiv.style.display = "none";
                 readerDiv.innerHTML = ""; // Limpa a memória
+
+                // LIMPEZA DE LISTENERS para evitar vazamento (Leak) e travamentos
+                if (window.readerListeners) {
+                    window.readerListeners.forEach(l => document.removeEventListener(l.type, l.handler));
+                    window.readerListeners = [];
+                }
+
                 updateZoom();
             } else {
                 btnEdit.classList.remove('active');
@@ -1494,6 +1569,12 @@
                 if (btnExit) btnExit.style.display = 'inline-block';
 
                 readerDiv.style.display = "flex";
+
+                // LIMPEZA ANTES DE MONTAR: Evita o acúmulo de listeners se o modo leitor for ativado várias vezes
+                if (window.readerListeners) {
+                    window.readerListeners.forEach(l => document.removeEventListener(l.type, l.handler));
+                    window.readerListeners = [];
+                }
 
                 // Monta o visualizador combinando as edições feitas na hora
                 readerDiv.innerHTML = "";
@@ -1531,15 +1612,7 @@
                     readerCanvas.style.cursor = window.currentMode === 'picker' ? 'crosshair' : 'none';
 
                     // Revalida cursor sempre que mudar de modo globalmente
-                    document.addEventListener('modeChanged', () => {
-                        readerCanvas.style.cursor = window.currentMode === 'picker' ? 'crosshair' : 'none';
-                    });
-
-                    const rCtx = readerCanvas.getContext('2d', { willReadFrequently: true });
-                    rCtx.drawImage(data.bg, 0, 0, data.natWidth, data.natHeight);
-                    rCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
-
-                    // Sync helper function for this specific reader canvas
+                    // Usamos listeners nomeados para permitir a remoção posterior
                     const syncReader = () => {
                         rCtx.clearRect(0, 0, readerCanvas.width, readerCanvas.height);
                         rCtx.globalCompositeOperation = 'source-over';
@@ -1547,7 +1620,17 @@
                         rCtx.drawImage(data.fg, 0, 0, data.natWidth, data.natHeight);
                     };
 
+                    const modeChangeHandler = () => {
+                        readerCanvas.style.cursor = window.currentMode === 'picker' ? 'crosshair' : 'none';
+                    };
+
+                    document.addEventListener('modeChanged', modeChangeHandler);
                     document.addEventListener(`readerRedraw_${index}`, syncReader);
+
+                    // Guardar para limpeza posterior
+                    if (!window.readerListeners) window.readerListeners = [];
+                    window.readerListeners.push({ type: 'modeChanged', handler: modeChangeHandler });
+                    window.readerListeners.push({ type: `readerRedraw_${index}`, handler: syncReader });
 
                     // Live Edit Proxy from Reader to Original Canvas
                     let readerDrawing = false;
@@ -1840,14 +1923,15 @@
 
         let currentUltraBase64 = null;
         window.addEventListener("message", (event) => {
-            if (event.origin !== window.location.origin) return;
+            // Permitir mensagens de portas diferentes no localhost (5000, 5001, 5002)
+            if (!event.origin.startsWith("http://localhost")) return;
 
             if (event.data === "ULTRA_READY" && currentUltraBase64) {
                 event.source.postMessage({ type: "LOAD_IMAGE", base64: currentUltraBase64 }, window.location.origin);
                 currentUltraBase64 = null;
             }
 
-            if (event.data && event.data.type === "ULTRA_RESULT") {
+            if (event.data && (event.data.type === "ULTRA_RESULT" || event.data.type === "EDITOR_RESULT")) {
                 const img = new Image();
                 img.onload = () => {
                     let index = event.data.index !== undefined ? event.data.index : window.lastActiveCanvasIndex;
@@ -1866,22 +1950,37 @@
 
                         bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
 
+                        // [NOVO] v29.1: Se vier do Editor Pro, salvamos o estado do projeto (Objetos Konva)
+                        // Isso permite que ao reabrir a mesma imagem no Pro, os textos continuem editáveis.
+                        if (event.data.konvaState) {
+                            window.canvases[index].proState = event.data.konvaState;
+                        }
+
                         // ATUALIZAR A FONTE ORIGINAL (Persistência para o Save)
                         window.canvases[index].sourceImg = img;
+
+                        // ATUALIZAR baseFG (Camada Base do Editor)
+                        // Isso é crucial para que o Reader Mode e o Save usem a nova imagem limpa
+                        const fgBaseCanvas = document.createElement('canvas');
+                        fgBaseCanvas.width = bgCanvas.width;
+                        fgBaseCanvas.height = bgCanvas.height;
+                        fgBaseCanvas.getContext('2d').drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
+                        window.canvases[index].baseFG = fgBaseCanvas;
 
                         // Mostrar botão Reverter
                         const btnUndo = document.getElementById('btnUndoUltra');
                         if (btnUndo) btnUndo.style.display = 'inline-block';
 
-                        // Limpar os traços e textos anteriores, pois agora fazem parte do fundo (foram processados)
+                        // Limpar os traços e textos anteriores, pois agora fazem parte do fundo (foram processados/limpos pela IA)
+                        // Se não limparmos o FG, as manchas manuais que o usuário fez vão continuar aparecendo em cima da limpeza da IA
                         const fgCanvas = document.getElementById(`fg_${index}`);
                         fgCanvas.getContext('2d').clearRect(0, 0, fgCanvas.width, fgCanvas.height);
                         window.canvases[index].paths = [];
                         window.canvases[index].texts = [];
 
-                        redrawFG(index);
+                        redrawFG(index); // Força sincronia e limpa visualmente as "manchas" manuais
                         document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
-                        console.log("Imagem recebida de volta do Lab Ultra e atualizada com sucesso!");
+                        console.log("Imagem recebida de volta do Lab Ultra e atualizada com sucesso no BG e BaseFG!");
 
                         // PERSISTÊNCIA NO SERVIDOR: Salva a imagem no disco para não perder ao recarregar
                         if (sessionId && window.canvases[index].fileName) {
@@ -1988,6 +2087,8 @@
 
                     redrawFG(index);
                     document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
+                    // Se estiver no leitor, precisamos garantir que o rCtx do leitor também seja atualizado imediatamente
+                    window.dispatchEvent(new CustomEvent('readerRedrawAll'));
                     console.log("Revertido para o estado antes da IA.");
                 }
             }
@@ -2391,39 +2492,45 @@
             });
         }
 
-        // Função para redesenhar tudo de forma limpa e não-destrutiva
+        window.redrawRequests = {};
+
+        // Função para redesenhar tudo de forma limpa e não-destrutiva com DEBOUNCE (Performance)
         function redrawFG(index) {
-            const data = window.canvases[index];
-            if (!data) return;
-            const ctx = data.fg.getContext('2d');
+            if (window.redrawRequests[index]) return; // Já tem um frame agendado
 
-            ctx.clearRect(0, 0, data.fg.width, data.fg.height);
-
-            // 0. Desenha o resultado automático base (se houver)
-            if (data.baseFG) {
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.drawImage(data.baseFG, 0, 0, data.fg.width, data.fg.height);
-            }
-
-            // 1. Redesenha todas as pinceladas (Cleaning)
-            data.paths.forEach(p => {
-                ctx.beginPath();
-                ctx.globalCompositeOperation = (p.mode === 'restore') ? 'destination-out' : 'source-over';
-                ctx.strokeStyle = p.color;
-                ctx.lineWidth = p.size;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-
-                if (p.points.length > 0) {
-                    ctx.moveTo(p.points[0].x, p.points[0].y);
-                    p.points.forEach(pt => ctx.lineTo(pt.x, pt.y));
+            window.redrawRequests[index] = requestAnimationFrame(async () => {
+                const data = window.canvases[index];
+                if (!data) {
+                    delete window.redrawRequests[index];
+                    return;
                 }
-                ctx.stroke();
-            });
+                const ctx = data.fg.getContext('2d');
 
-            // 2. Redesenha os textos
-            // Usamos loop assíncrono porque drawText agora aguarda o carregamento das fontes customizadas
-            (async () => {
+                ctx.clearRect(0, 0, data.fg.width, data.fg.height);
+
+                // 0. Desenha o resultado automático base (se houver)
+                if (data.baseFG) {
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.drawImage(data.baseFG, 0, 0, data.fg.width, data.fg.height);
+                }
+
+                // 1. Redesenha todas as pinceladas (Cleaning)
+                data.paths.forEach(p => {
+                    ctx.beginPath();
+                    ctx.globalCompositeOperation = (p.mode === 'restore') ? 'destination-out' : 'source-over';
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = p.size;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+
+                    if (p.points.length > 0) {
+                        ctx.moveTo(p.points[0].x, p.points[0].y);
+                        p.points.forEach(pt => ctx.lineTo(pt.x, pt.y));
+                    }
+                    ctx.stroke();
+                });
+
+                // 2. Redesenha os textos
                 for (const t of data.texts) {
                     await drawText(ctx, t.x, t.y, t.content, t.size, t.family, t.color, t.maxWidth);
                     if (data.selectedText === t) {
@@ -2433,30 +2540,33 @@
                         ctx.strokeRect(t.x - (w / 2), t.y - (t.size / 2), w, t.size);
                     }
                 }
-            })();
 
-            // 3. Feedback de Medição
-            if (window.isMeasuring && window.currentMode === 'measure') {
-                ctx.setLineDash([5, 5]);
-                ctx.strokeStyle = '#fbbf24';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(0, window.measureStartY);
-                ctx.lineTo(data.fg.width, window.measureStartY);
-                ctx.stroke();
+                // 3. Feedback de Medição
+                if (window.isMeasuring && window.currentMode === 'measure') {
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, window.measureStartY);
+                    ctx.lineTo(data.fg.width, window.measureStartY);
+                    ctx.stroke();
 
-                // Desenha linha atual do mouse
-                const currentY = parseFloat(document.getElementById('textSize').dataset.lastY || window.measureStartY);
-                ctx.beginPath();
-                ctx.moveTo(0, currentY);
-                ctx.lineTo(data.fg.width, currentY);
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
+                    // Desenha linha atual do mouse
+                    const currentY = parseFloat(document.getElementById('textSize').dataset.lastY || window.measureStartY);
+                    ctx.beginPath();
+                    ctx.moveTo(0, currentY);
+                    ctx.lineTo(data.fg.width, currentY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
 
-            if (window.currentView === 'reader') {
-                document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
-            }
+                delete window.redrawRequests[index];
+
+                // Dispara atualização para o Reader View
+                if (window.currentView === 'reader') {
+                    document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
+                }
+            });
         }
 
         function rgbToHex(r, g, b) {

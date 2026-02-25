@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webtoon Professional Editor - Experimental</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+</head>
+
+<body>
+    <div id="app-container">
+        <aside id="sidebar">
+            <div class="tool-group">
+                <h3>Arquivo</h3>
+                <button onclick="editor.syncAndClose()"
+                    style="background: #f59e0b; color: white; border: none; width: 100%; margin-bottom: 20px; height: 42px; font-weight: bold; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;"
+                    title="Salvar alterações e voltar para o editor principal">
+                    <span style="font-size: 1.2em;">⬅️</span> Salvar e Voltar
+                </button>
+                <input type="file" id="image-upload" accept="image/*" style="display: none;">
+                <button class="primary" onclick="triggerUpload()">📂 Upload
+                    Imagem</button>
+                <button onclick="exportImage()">💾 Exportar Final</button>
+            </div>
+
+            <div class="tool-group">
+                <h3>Editor de Texto</h3>
+                <button onclick="addText()"
+                    style="background: var(--primary); color: white; border: none; width: 100%; margin-bottom: 8px;">✨
+                    Adicionar Novo
+                    Texto</button>
+                <button onclick="window.editor.addNewSFX()"
+                    style="background: var(--secondary); color: white; border: none; width: 100%;">💥 Adicionar Novo
+                    SFX</button>
+                <div class="control-row" style="margin-top: 10px; flex-wrap: wrap; gap: 8px;">
+                    <label>Modo OCR:</label>
+                    <button id="btn-ocr-toggle" onclick="window.editor.toggleOCRMode()"
+                        style="padding: 4px 12px; font-size: 11px; background: #2c3e50; border: 1px solid #34495e; border-radius: 4px; transition: all 0.2s;">
+                        OFF
+                    </button>
+                    <button id="btn-extract-ocr" onclick="window.editor.extractTextFromScreen()"
+                        style="padding: 4px 8px; font-size: 11px; background: #34495e; margin-left: auto; opacity: 0.5;"
+                        disabled>🔍 Extrair OCR</button>
+                </div>
+                <textarea id="sidebar-text-content" placeholder="Selecione um texto para editar..."
+                    oninput="updateSelectedText(); styleExtract.handleSliderChange()"></textarea>
+
+                <div class="control-row" style="margin-top: 10px;">
+                    <label>Ao clicar duplo:</label>
+                    <select id="edit-mode-select">
+                        <option value="overlay">Caixa no Canvas (Overlay)</option>
+                    </select>
+                </div>
+
+                <div class="control-row">
+                    <label>Fonte:</label>
+                    <select id="font-family" onchange="styleExtract.handleSliderChange(); updateSelectedText()"
+                        style="flex-grow: 1;"></select>
+                </div>
+                <div class="control-row" id="row-font-size">
+                    <label>Tamanho:</label>
+                    <input type="number" id="font-size" value="40" min="1"
+                        oninput="updateSelectedText(); styleExtract.handleSliderChange()" class="number-input">
+                </div>
+                <div class="control-row">
+                    <label>Peso (Weight):</label>
+                    <select id="font-weight" onchange="styleExtract.handleSliderChange(); updateSelectedText()">
+                        <option value="normal">Regular</option>
+                        <option value="bold">Bold</option>
+                        <option value="900">Black/Heavy</option>
+                        <option value="300">Light</option>
+                    </select>
+                </div>
+                <div class="control-row">
+                    <label>Espaçamento:</label>
+                    <input type="range" id="letter-spacing" min="-10" max="30" step="1" value="0"
+                        oninput="styleExtract.handleSliderChange(); updateSelectedText()" style="flex-grow: 1;">
+                    <span id="val-letter-spacing" class="val-badge">0</span>
+                </div>
+                <div class="control-row">
+                    <label>Altura Linha:</label>
+                    <input type="range" id="line-height" min="0.5" max="3" step="0.1" value="1"
+                        oninput="styleExtract.handleSliderChange(); updateSelectedText()" style="flex-grow: 1;">
+                    <span id="val-line-height" class="val-badge">1</span>
+                </div>
+                <div class="control-row">
+                    <label>Achatamento (H):</label>
+                    <input type="range" id="scale-x" min="0.5" max="2.5" step="0.1" value="1"
+                        oninput="styleExtract.handleSliderChange(); updateSelectedText()" style="flex-grow: 1;">
+                    <span id="val-scale-x" class="val-badge">1</span>
+                </div>
+
+                <button id="btn-activate-sfx" onclick="window.editor.convertToSFX()"
+                    style="width: 100%; margin-top: 15px; background: var(--accent-purple); display: none; border: 1px solid rgba(255,255,255,0.2);">
+                    🚀 Ativar Engine SFX
+                </button>
+            </div>
+
+            <div class="tool-group">
+                <h3>Cores e Degradê</h3>
+                <div class="control-row">
+                    <label>Cor Base:</label>
+                    <div style="display: flex; align-items: center;">
+                        <input type="color" id="text-color" value="#000000"
+                            oninput="styleExtract.handleSliderChange(); updateSelectedText()">
+                        <span id="hex-text-color" class="hex-display">#000000</span>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label>Usar Degradê:</label>
+                    <input type="checkbox" id="grad-enabled"
+                        onchange="styleExtract.handleSliderChange(); updateSelectedText()">
+                </div>
+                <div class="control-row" id="grad-dir-row" style="display: none;">
+                    <label>Direção:</label>
+                    <select id="grad-direction" onchange="styleExtract.handleSliderChange(); updateSelectedText()">
+                        <option value="vertical">Vertical</option>
+                        <option value="horizontal">Horizontal</option>
+                    </select>
+                </div>
+                <div id="manual-grad-panel" class="gradient-panel">
+                    <div class="control-row" style="margin-bottom: 8px;">
+                        <label>Topo:</label>
+                        <div style="display: flex; align-items: center;">
+                            <input type="color" id="grad-color-1" value="#000000"
+                                oninput="styleExtract.handleSliderChange(); updateSelectedText()">
+                            <span id="hex-grad-color-1" class="hex-display">#000000</span>
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <label>Fundo:</label>
+                        <div style="display: flex; align-items: center;">
+                            <input type="color" id="grad-color-2" value="#000000"
+                                oninput="styleExtract.handleSliderChange(); updateSelectedText()">
+                            <span id="hex-grad-color-2" class="hex-display">#000000</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tool-group">
+                <h3>Contorno (Borda)</h3>
+                <div class="control-row">
+                    <label>Largura:</label>
+                    <input type="number" id="stroke-width" value="0" min="0" max="20" onchange="updateSelectedText()"
+                        style="width: 60px;">
+                </div>
+                <div class="control-row">
+                    <label>Cor:</label>
+                    <div style="display: flex; align-items: center;">
+                        <input type="color" id="stroke-color" value="#ffffff"
+                            oninput="styleExtract.handleSliderChange(); updateSelectedText()">
+                        <span id="hex-stroke-color" class="hex-display">#FFFFFF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tool-group" id="group-dna-library">
+                <h3>DNA Library: Estilos Prontos</h3>
+                <div id="presets-container" class="presets-gallery">
+                    <!-- Preenchido via JS -->
+                </div>
+                <button onclick="styleExtract.renderSFX()"
+                    style="width: 100%; height: 42px; background: var(--secondary); margin-bottom: 8px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1);">
+                    💥 Gerar SFX Traduzido
+                </button>
+                <button onclick="editor.resetGeometry()"
+                    style="width: 100%; background: #e74c3c; margin-bottom: 8px; font-weight: bold; font-size: 0.8rem; height: 32px;">
+                    🔄 Zerar Geometria SFX
+                </button>
+                <button onclick="styleExtract.saveCurrentAsPreset()"
+                    style="width: 100%; background: var(--accent-purple); font-size: 0.8rem; height: 32px;">
+                    💾 Salvar Meu Estilo (DNA)
+                </button>
+            </div>
+
+            <div class="tool-group" id="group-visual-warp">
+                <h3>Variação Visual</h3>
+                <div class="control-row">
+                    <label>Deformação:</label>
+                    <input type="range" id="warp-intensity" min="0" max="3" step="0.1" value="1.0"
+                        oninput="styleExtract.handleSliderChange()"
+                        style="flex-grow: 1; accent-color: var(--accent-purple);">
+                    <span id="val-warp-intensity" class="val-badge">1.0</span>
+                </div>
+                <div class="control-row">
+                    <label>Curvatura (Arco):</label>
+                    <input type="range" id="sfx-arch" min="-2" max="2" step="0.1" value="0"
+                        oninput="styleExtract.handleSliderChange()" style="flex-grow: 1; accent-color: #ff5722;">
+                    <span id="val-sfx-arch" class="val-badge">0</span>
+                </div>
+            </div>
+
+            <div class="tool-group" id="group-skew">
+                <h3>Inclinação (Skew)</h3>
+                <div class="control-row">
+                    <label>Lateral (X):</label>
+                    <input type="range" id="skew-x" min="-2" max="2" step="0.1" value="0"
+                        oninput="styleExtract.handleSliderChange(); updateSelectedText()" style="flex-grow: 1;">
+                    <span id="val-skew-x" class="val-badge">0</span>
+                </div>
+                <div class="control-row">
+                    <label>Vertical (Y):</label>
+                    <input type="range" id="skew-y" min="-2" max="2" step="0.1" value="0"
+                        oninput="styleExtract.handleSliderChange(); updateSelectedText()" style="flex-grow: 1;">
+                    <span id="val-skew-y" class="val-badge">0</span>
+                </div>
+            </div>
+
+            <div class="tool-group">
+                <h3>Efeitos</h3>
+                <div class="control-row" style="margin-top: 8px;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="text-shadow" onchange="updateSelectedText()"> Sombra Ativa
+                    </label>
+                </div>
+                <div class="control-row">
+                    <label>Desfoque (Blur):</label>
+                    <input type="range" id="shadow-blur" min="0" max="20" value="5"
+                        oninput="styleExtract.handleSliderChange(); updateSelectedText()" style="flex-grow: 1;">
+                    <span id="val-shadow-blur" class="val-badge">5</span>
+                </div>
+                <div class="control-row">
+                    <label>Distância (X/Y):</label>
+                    <input type="range" id="shadow-offset" min="-15" max="15" value="2"
+                        oninput="styleExtract.handleSliderChange(); updateSelectedText()" style="flex-grow: 1;">
+                    <span id="val-shadow-offset" class="val-badge">2</span>
+                </div>
+                <div class="control-row" style="margin-top: 5px;">
+                    <label>Cor da Sombra:</label>
+                    <input type="color" id="shadow-color" value="#000000"
+                        oninput="styleExtract.handleSliderChange(); updateSelectedText()">
+                    <span id="hex-shadow-color" class="hex-display">#000000</span>
+                </div>
+            </div>
+
+            <div class="tool-group" style="border-bottom: none;">
+                <h3>Ações</h3>
+                <button onclick="editor.centerSelectedText()" style="width: 100%;">🎯 Centralizar</button>
+                <button onclick="editor.deleteSelected()"
+                    style="background: rgba(220, 53, 69, 0.1); color: var(--danger); border: 1px solid var(--danger); width: 100%;">🗑️
+                    Deletar</button>
+            </div>
+        </aside>
+
+        <main id="canvas-area">
+            <div id="container"></div>
+            <div id="zoom-badge">Scale: <span id="zoom-level">100%</span></div>
+            <div id="navigator-container"></div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='editor.js') }}"></script>
+    <script src="{{ url_for('static', filename='style_extract.js') }}"></script>
+    <script src="{{ url_for('static', filename='navigation.js') }}"></script>
+    <script src="{{ url_for('static', filename='minimap.js') }}"></script>
+
+    <!-- Script de Integração v28.9 (Porta 5002 <-> 5000) -->
+    <script>
+        window.onload = () => {
+            if (window.opener) {
+                console.log("[INTEGRAÇÃO] Avisando projeto principal (5000) que o Editor está pronto...");
+                window.opener.postMessage("EDITOR_READY", window.location.origin);
+            }
+        };
+
+        window.addEventListener("message", (event) => {
+            if (!event.data) return;
+
+            if (event.data.type === "LOAD_IMAGE") {
+                console.log("[INTEGRAÇÃO] Recebendo imagem via postMessage...");
+                if (window.editor && window.editor.loadRemoteImage) {
+                    window.editor.loadRemoteImage(event.data.base64);
+                }
+            }
+
+            if (event.data.type === "LOAD_PROJECT") {
+                console.log("[INTEGRAÇÃO] Recebendo estado do projeto (JSON) via postMessage...");
+                if (window.editor && window.editor.loadProject) {
+                    window.editor.loadProject(event.data.json);
+                }
+            }
+        });
+
+        function goBack() {
+            if (window.opener) {
+                window.close();
+            } else {
+                window.location.href = "http://localhost:5000";
+            }
+        }
+    </script>
+</body>
+
+</html>

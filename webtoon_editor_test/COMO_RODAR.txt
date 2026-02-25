@@ -1,0 +1,13 @@
+Para rodar o editor manualmente no futuro, siga estes passos:
+
+1. **Abra o terminal** na pasta do projeto:
+   `cd /home/sam/DadosHD/manga_cleaner_v2`
+
+2. **Execute o script**:
+   `python3 webtoon_editor_test/app.py`
+
+3. **Acesse no navegador**:
+   [http://localhost:5002](http://localhost:5002)
+
+---
+**Status Atual**: O servidor já foi iniciado por mim e deve estar acessível no link acima.

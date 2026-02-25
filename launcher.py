@@ -28,9 +28,14 @@ def main():
     else:
         print(f"[+] Iniciando em modo de desenvolvimento...")
 
-    # Se estiver congelado, o PyInstaller coloca os arquivos em sys._MEIPASS
-    # Mas queremos que o banco de dados e arquivos processados fiquem na pasta do .exe
-    
+    # Tenta rodar o auto-updater antes de iniciar o servidor
+    try:
+        from core.updater import run_update_process
+        print("[+] Verificando atualizações no GitHub...")
+        run_update_process()
+    except Exception as e:
+        print(f"[!] Aviso: Nao foi possivel verificar atualizações: {e}")
+
     # Inicia a thread do navegador
     threading.Thread(target=open_browser, daemon=True).start()
     
