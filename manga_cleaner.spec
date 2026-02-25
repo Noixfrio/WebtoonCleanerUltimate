@@ -10,7 +10,7 @@ datas += collect_data_files('fastapi')
 
 # Adicionando pastas de dados do projeto de forma segura
 added_files = []
-for src_path in ['web_app/templates', 'web_app/static', 'assets', 'models']:
+for src_path in ['web_app/templates', 'web_app/static', 'webtoon_editor_test', 'assets', 'models']:
     if os.path.exists(src_path):
         added_files.append((src_path, src_path))
 datas += added_files
