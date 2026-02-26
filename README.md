@@ -16,44 +16,46 @@ Existem três maneiras de usar o editor, escolha a que for melhor para você:
 
 ### 1. 🚀 Executável Portátil (Maneira Mais Fácil)
 Não precisa instalar nada! Ideal para quem quer apenas usar o programa.
-*   **Baixar:** Acesse a página de [RELEASES](https://github.com/Noixfrio/WebtoonCleanerUltimate/releases) e baixe a versão mais nova para seu sistema (Windows ou Linux).
-*   **Como usar:** Extraia o arquivo e abra o executável `MangaCleaner`.
+*   **Baixar:** Acesse a página de [RELEASES](https://github.com/Noixfrio/WebtoonCleanerUltimate/releases) e baixe a versão mais nova (v0.9.9-beta.6+).
+*   **Como usar:** Extraia o arquivo e abra o executável `ToonixEditor`. 
+*   **Nota:** Na primeira execução, o programa baixará automaticamente os modelos de IA necessários (~250MB).
 
 ### 2. 🐧 Linux / MacOS (Scripts Rápidos)
-Se você está no Linux, agora temos scripts que fazem tudo por você:
-1.  Clique duas vezes em `./INSTALAR_BIBLIOTECAS.sh` (faz o setup inicial).
-2.  Para usar, clique sempre em `./INICIAR_PROGRAMA.sh`.
-3.  Para gerar seu próprio executável, use `./GERAR_EXE.sh`.
+Se você está no Linux, temos scripts que automatizam o setup:
+1.  Execute `./INSTALAR_BIBLIOTECAS.sh` (faz o setup do ambiente Python).
+2.  Para usar, execute `./INICIAR_PROGRAMA.sh`.
+3.  O sistema agora utiliza **Lazy Loading**, baixando os motores de IA apenas quando necessário.
 
 ### 3. 🛠️ Instalação Tradicional (Para Desenvolvedores)
 Se você quer rodar o código fonte puro e fazer modificações:
 
 ---
 
-## 🚀 Como Funciona (Transparência)
-Este projeto foi construído com foco total na segurança. Ele roda **localmente**.
-*   **Privacidade:** Suas imagens nunca saem do seu PC. O processamento acontece no seu próprio hardware.
+## 🚀 Como Funciona (Inteligência Dinâmica)
+Este projeto foi refatorado para ser leve e eficiente.
+*   **Executável Ultraleve:** O download inicial tem apenas ~200MB.
+*   **Modelos On-Demand:** Os modelos pesados de OCR e Inpainting são baixados automaticamente na primeira vez que você inicia o app.
+*   **Hospedagem Híbrida:** Binários hospedados no Hugging Face para garantir velocidade e estabilidade.
 
 ---
 
 ## 💻 Instalação
 
 ### Windows (Recomendado)
-1. Baixe este projeto e extraia a pasta.
-2. Clique duas vezes no arquivo `1_BAIXAR_PYTHON_3.10.bat` (O Python será instalado automaticamente, marque a opção "Add Python to PATH" na tela).
-3. Depois, clique em `2_INSTALAR_BIBLIOTECAS.bat`. Ele vai baixar as inteligências artificiais necessárias automaticamente.
-4. Para abrir o programa, clique em `3_INICIAR_PROGRAMA.bat`.
+1. Baixe a release v0.9.9-beta.6 no GitHub.
+2. Extraia e execute o `ToonixEditor.exe`.
+3. Aguarde o download automático dos modelos na tela inicial.
 
 ### Linux / MacOS
-1. Instale **EXATAMENTE o Python 3.10** (versões 3.12 ou mais novas não são compatíveis com o PaddleOCR no momento).
+1. Recomendado **Python 3.10** para estabilidade.
 2. No terminal:
    ```bash
-   git clone [url-do-repositorio]
-   cd manga_cleaner_v2
+   git clone https://github.com/Noixfrio/WebtoonCleanerUltimate.git
+   cd WebtoonCleanerUltimate
    python3 -m venv venv
    source venv/bin/activate
    pip install -r requirements.txt
-   python3 -m uvicorn web_app.main:app --host 0.0.0.0 --port 5000
+   python3 launcher/main.py
    ```
 3. Abra `localhost:5000` no seu navegador.
 
