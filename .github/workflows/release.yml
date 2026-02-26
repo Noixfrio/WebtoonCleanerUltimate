@@ -43,14 +43,14 @@ jobs:
       - name: Prepare Windows Artifact
         if: matrix.os == 'windows-latest'
         run: |
-          Move-Item -Path "dist\ToonixLauncher\ToonixLauncher.exe" -Destination "dist\Toonix-${{ github.ref_name }}-windows.exe"
+          Move-Item -Path "dist\ToonixEditor\ToonixLauncher.exe" -Destination "dist\Toonix-${{ github.ref_name }}-windows.exe"
           $hash = (Get-FileHash "dist\Toonix-${{ github.ref_name }}-windows.exe" -Algorithm SHA256).Hash
           echo "$hash" > "dist\windows_sha256.txt"
 
       - name: Prepare Linux Artifact
         if: matrix.os == 'ubuntu-latest'
         run: |
-          mv dist/ToonixLauncher/ToonixLauncher dist/Toonix-${{ github.ref_name }}-linux
+          mv dist/ToonixEditor/ToonixLauncher dist/Toonix-${{ github.ref_name }}-linux
           sha256sum dist/Toonix-${{ github.ref_name }}-linux | awk '{ print $1 }' > dist/linux_sha256.txt
 
       - name: Upload Artifacts
