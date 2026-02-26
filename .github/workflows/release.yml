@@ -46,6 +46,12 @@ jobs:
             libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-render-util0 \
             libxcb-shape0 libxcb-xinerama0 libxcb-xinput0 libgomp1
 
+      - name: Install Tcl/Tk (Tkinter)
+        if: matrix.os == 'windows-latest'
+        run: |
+          # No Windows do GitHub Actions, isso garante que o ambiente tenha o Tkinter
+          python -m pip install tk
+
       - name: Install Python Requirements
         shell: bash
         run: |

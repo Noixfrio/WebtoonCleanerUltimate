@@ -95,18 +95,24 @@ class ToonixUI(ctk.CTk):
                 self.after(0, lambda: self._show_update_popup(remote))
                 return
             
-            # 2. Verificar Integridade
-            self.progress_bar.set(0.6)
-            self._set_status(_("status_checking"), "gray")
+            # 3. Verificar Modelos de IA (Download sob demanda)
+            from core.model_manager import ModelManager
+            model_mgr = ModelManager()
             
-            # Simulação de hash esperado (no futuro vem do version.json)
-            expected_hash = remote.get("files", {}).get("windows", {}).get("sha256") if remote else None
-            
-            if not self.updater.validate_integrity(expected_hash):
-                # Por enquanto apenas logamos para não travar o dev
-                logger.error("Falha silenciosa de integridade (dev mode)")
-            
-            # 3. Finalizar
+            missing = model_mgr.get_missing_models()
+            if missing:
+                logger.info(f"Modelos ausentes detectados: {missing}")
+                self.after(0, lambda: self._set_status("Baixando Modelos de IA... (Primeira execução)", "#58a6ff"))
+                
+                def progress_hook(percentage, model_name):
+                    self.after(0, lambda: self.progress_bar.set(percentage))
+                    self.after(0, lambda: self._set_status(f"Baixando {model_name}: {int(percentage*100)}%", "#58a6ff"))
+
+                if not model_mgr.check_and_download_all(progress_hook=progress_hook):
+                    self.after(0, lambda: self._set_status("Falha ao baixar modelos!", "red"))
+                    return
+
+            # 4. Finalizar
             def finish_boot():
                 self.progress_bar.set(1.0)
                 self._set_status(_("status_idle"), "#238636")
