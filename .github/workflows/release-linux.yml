@@ -1,0 +1,153 @@
+name: Toonix Editor Linux Release
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*-lin'
+
+permissions:
+  contents: write
+
+jobs:
+  build_linux:
+    name: Build Linux
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/local/lib/android
+          sudo docker image prune --all --force
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Linux Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libxkbcommon-x11-0 python3-tk libgirepository1.0-dev \
+            gcc libcairo2-dev pkg-config gir1.2-gtk-3.0 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-render-util0 \
+            libxcb-shape0 libxcb-xinerama0 libxcb-xinput0 libgomp1
+
+      - name: Install Python Requirements
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+          pip install pyinstaller huggingface_hub
+
+      - name: Build with PyInstaller
+        run: python -m PyInstaller launcher.spec --clean --noconfirm
+
+      - name: Prepare Artifacts
+        run: |
+          # Limpeza de binários pesados
+          find dist/ToonixEditor -name "*.pyc" -delete
+          find dist/ToonixEditor -name "__pycache__" -delete
+          rm -rf dist/ToonixEditor/_internal/paddle/fluid/proto
+          rm -rf dist/ToonixEditor/_internal/paddle/dataset
+          rm -rf dist/ToonixEditor/_internal/matplotlib
+          cd dist/ToonixEditor && zip -9 -r ../../Toonix-${{ github.ref_name }}-linux.zip . && cd ../..
+          sha256sum Toonix-${{ github.ref_name }}-linux.zip | awk '{ print $1 }' > linux_sha256.txt
+
+      - name: Upload to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          FILE_NAME: Toonix-${{ github.ref_name }}-linux.zip
+        run: |
+          python3 -c "
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi()
+          repo_id = 'samyuush/WebtoonCleanerUltimate'
+          token = os.environ['HF_TOKEN']
+          api.upload_file(
+              path_or_fileobj=os.environ['FILE_NAME'],
+              path_in_repo=f'binaries/{os.environ[\"FILE_NAME\"]}',
+              repo_id=repo_id,
+              repo_type='model',
+              token=token
+          )
+          "
+
+      - name: Upload Build Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-results-linux
+          path: |
+            Toonix-*-linux.zip
+            linux_sha256.txt
+          retention-days: 1
+
+  publish_linux:
+    name: Publish Linux Release
+    needs: build_linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-results-linux
+          path: dist-artifacts
+
+      - name: Update README.md and version.json
+        run: |
+          VERSION="${{ github.ref_name }}"
+          LINUX_HASH=$(cat dist-artifacts/linux_sha256.txt)
+          
+          # 1. Atualiza README.md (específico para Linux)
+          sed -i "s|\[Linux (v[^)]*)\](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v[^)]*-linux.zip)|[Linux ($VERSION)](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-linux.zip)|g" README.md
+          
+          # 2. Atualiza version.json
+          python3 -c "
+          import json, os
+          with open('version.json', 'r') as f: data = json.load(f)
+          data['version'] = '$VERSION'.split('-')[0].replace('v', '')
+          data['linux'] = {
+              'url': f'https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-linux.zip',
+              'sha256': '$LINUX_HASH'
+          }
+          with open('version.json', 'w') as f: json.dump(data, f, indent=4)
+          "
+          
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md version.json
+          git commit -m "docs: auto-update Linux release to $VERSION [skip ci]" || echo "No changes"
+          git push origin master
+
+      - name: Create Release Body
+        run: |
+          VERSION="${{ github.ref_name }}"
+          cat <<EOF > release_body.md
+          # Toonix Editor $VERSION (Linux Update)
+          
+          ### 📥 Downloads Diretos (Hugging Face)
+          *   **Linux:** [Toonix-$VERSION-linux.zip](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-linux.zip)
+          
+          ---
+          *Esta release foi gerada automaticamente para Linux.*
+          EOF
+
+      - name: Create/Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Toonix Editor ${{ github.ref_name }}
+          body_path: release_body.md
+          files: version.json
+          tag_name: ${{ github.ref_name }}
