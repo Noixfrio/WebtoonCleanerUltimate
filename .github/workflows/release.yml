@@ -64,7 +64,7 @@ jobs:
           pip install pyinstaller huggingface_hub
 
       - name: Build with PyInstaller
-        run: pyinstaller launcher.spec --clean --noconfirm
+        run: python -m PyInstaller launcher.spec --clean --noconfirm
 
       - name: Prepare Artifacts (Windows)
         if: matrix.os == 'windows-latest'

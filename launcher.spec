@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
-import customtkinter
 import os
+from PyInstaller.utils.hooks import collect_data_files
 
 block_cipher = None
 
@@ -18,9 +18,7 @@ def get_added_files():
         files.append(('assets/fonts/', 'assets/fonts/'))
     
     # CustomTkinter assets
-    ctk_path = os.path.dirname(customtkinter.__file__)
-    files.append((os.path.join(ctk_path, 'gui'), 'customtkinter/gui'))
-    files.append((os.path.join(ctk_path, 'assets'), 'customtkinter/assets'))
+    files += collect_data_files('customtkinter')
     
     return files
 
