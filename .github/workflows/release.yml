@@ -49,7 +49,7 @@ jobs:
       - name: Install Tcl/Tk (Tkinter)
         if: matrix.os == 'windows-latest'
         run: |
-          # No Windows do GitHub Actions, isso garante que o ambiente tenha o Tkinter
+          # Garante o Tkinter no ambiente Windows do Actions
           python -m pip install tk
 
       - name: Install Python Requirements
