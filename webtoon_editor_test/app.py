@@ -12,10 +12,11 @@ import pytesseract
 from PIL import Image
 
 import json
+from launcher.utils import get_resource_path
 
 app = Flask(__name__)
 
-PRESETS_FILE = "/home/sam/DadosHD/manga_cleaner_v2/webtoon_editor_test/presets.json"
+PRESETS_FILE = get_resource_path("webtoon_editor_test/presets.json")
 
 def load_presets_from_file():
     try:
@@ -60,12 +61,12 @@ def log_debug(msg):
 
 @app.route('/fonts/<path:filename>')
 def serve_font(filename):
-    font_dir = "/home/sam/DadosHD/manga_cleaner_v2/webtoon_editor_test/Fontes - mangá"
+    font_dir = get_resource_path("webtoon_editor_test/Fontes - mangá")
     return send_from_directory(font_dir, filename)
 
 @app.route('/api/list_fonts')
 def list_fonts():
-    font_dir = "/home/sam/DadosHD/manga_cleaner_v2/webtoon_editor_test/Fontes - mangá"
+    font_dir = get_resource_path("webtoon_editor_test/Fontes - mangá")
     categories = {}
     for root, dirs, files in os.walk(font_dir):
         category_name = os.path.basename(root)
@@ -119,7 +120,7 @@ def render_sfx():
         print(f"DEBUG DNA: Renderizando '{text}' ({f_weight})")
         
         # Localizar arquivo da fonte (Busca inteligente por Peso)
-        font_dir = "/home/sam/DadosHD/manga_cleaner_v2/webtoon_editor_test/Fontes - mangá"
+        font_dir = get_resource_path("webtoon_editor_test/Fontes - mangá")
         search_terms = []
         if f_weight in ['bold', '700']: search_terms.append('bold')
         elif f_weight in ['900', 'heavy', 'black']: search_terms.extend(['black', 'heavy', 'extrabold', 'bold'])
@@ -265,7 +266,7 @@ def extract_text():
             image_pil = Image.open(file.stream).convert('RGB')
             
             # Salvar original para comparação (DadosHD tem espaço)
-            orig_debug_path = "/home/sam/DadosHD/manga_cleaner_v2/webtoon_editor_test/debug_ocr_orig.png"
+            orig_debug_path = get_resource_path("webtoon_editor_test/debug_ocr_orig.png")
             image_pil.save(orig_debug_path)
 
             # --- UPGRADE v27.9: Pré-processamento com OpenCV para Tesseract ---
@@ -284,7 +285,7 @@ def extract_text():
                 processed = gray
 
             # Salvar dump para debug
-            debug_path = "/home/sam/DadosHD/manga_cleaner_v2/webtoon_editor_test/debug_ocr_processed.png"
+            debug_path = get_resource_path("webtoon_editor_test/debug_ocr_processed.png")
             cv2.imwrite(debug_path, processed)
             
             image_final = Image.fromarray(processed)
@@ -337,7 +338,7 @@ def perform_ocr():
         resp.headers.add('Access-Control-Allow-Methods', 'POST')
         return resp
 
-    log_file = "/home/sam/DadosHD/manga_cleaner_v2/ocr_debug.log"
+    log_file = get_resource_path("ocr_debug.log")
     with open(log_file, "a", encoding="utf-8") as f:
         try:
             import time
@@ -412,10 +413,4 @@ def check_tesseract():
         print(f"[!] Não foi possível listar idiomas: {e}")
     print("="*50 + "\n")
 
-if __name__ == '__main__':
-    # Rodar diagnóstico sênior
-    check_tesseract()
-    
-    # Iniciar com DEBUG ATIVO conforme solicitado
-    print("Servidor Webtoon Editor Backend (v27.2) Iniciando nas portas 5002...")
-    app.run(debug=True, port=5002, host='0.0.0.0')
+

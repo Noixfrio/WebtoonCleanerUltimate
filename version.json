@@ -1,21 +1,16 @@
 {
     "appName": "Toonix Editor",
-    "version": "0.9.0-beta",
+    "version": "0.9.0-beta-desktop",
     "mandatory": false,
     "files": {
-        "windows": {
-            "installer": "https://github.com/Noixfrio/WebtoonCleanerUltimate/releases/download/v0.9.0-beta/ToonixEditor-Setup.exe",
-            "portable": "https://github.com/Noixfrio/WebtoonCleanerUltimate/releases/download/v0.9.0-beta/ToonixEditor-Portable.zip",
-            "sha256": "39a116053155f804d57c44a47a7d0ab71691225c0ab401a9ada84a4d3ab0a6aa"
-        },
         "linux": {
-            "appimage": "https://github.com/Noixfrio/WebtoonCleanerUltimate/releases/download/v0.9.0-beta/ToonixEditor-x86_64.AppImage",
-            "sha256": "39a116053155f804d57c44a47a7d0ab71691225c0ab401a9ada84a4d3ab0a6aa"
+            "appimage": "https://github.com/Noixfrio/WebtoonCleanerUltimate/releases/download/v0.9.0-beta/ToonixEditor-Desktop-x86_64.AppImage",
+            "sha256": "2ed25233a008966770100a9ff651b41231125db6682d46fa4a0689189bb5f1ed"
         }
     },
     "news": [
-        "Lançamento Beta Público v0.9.0-beta",
-        "Novo sistema de projetos profissionais .WCU",
-        "Launcher com atualização automática e verificação de integridade"
+        "Toonix Editor agora é Nativo Desktop!",
+        "Removida dependência de navegador externo",
+        "Melhor performance de interface com PyWebView"
     ]
 }

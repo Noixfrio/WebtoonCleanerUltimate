@@ -259,12 +259,11 @@
 
     <!-- Script de Integração v28.9 (Porta 5002 <-> 5000) -->
     <script>
-        window.onload = () => {
-            if (window.opener) {
-                console.log("[INTEGRAÇÃO] Avisando projeto principal (5000) que o Editor está pronto...");
-                window.opener.postMessage("EDITOR_READY", window.location.origin);
-            }
-        };
+        const targetWindow = window.opener || window.parent;
+        if (targetWindow && targetWindow !== window) {
+            console.log("[INTEGRAÇÃO] Avisando projeto principal (5000) que o Editor está pronto...");
+            targetWindow.postMessage({ type: "EDITOR_READY" }, "*");
+        }
 
         window.addEventListener("message", (event) => {
             if (!event.data) return;
@@ -285,10 +284,13 @@
         });
 
         function goBack() {
-            if (window.opener) {
-                window.close();
-            } else {
-                window.location.href = "http://localhost:5000";
+            const targetWindow = window.opener || window.parent;
+            if (targetWindow && targetWindow !== window) {
+                targetWindow.postMessage({ type: "CLOSE_EDITOR" }, "*");
+            }
+            // Fallback para caso rodando sozinho
+            if (!window.opener && window.parent === window) {
+                window.location.href = "/";
             }
         }
     </script>

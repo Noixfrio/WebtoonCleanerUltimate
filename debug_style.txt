@@ -1,0 +1,57 @@
+[2026-02-24 21:21:13] --- NOVA SOLICITAÇÃO ---
+[2026-02-24 21:21:13] Cor detectada: #9c9c9f
+[2026-02-24 21:21:13] Gradiente: False
+[2026-02-24 21:21:13] Stroke: {'enabled': False, 'color': '#000000', 'width': 0}
+[2026-02-24 21:21:13] Sombra: {'enabled': False, 'color': '#000000', 'offset_x': 0, 'offset_y': 0, 'blur': 5}
+[2026-02-24 21:23:43] --- NOVA SOLICITAÇÃO ---
+[2026-02-24 21:23:43] Cor detectada: #a39ea0 (Fundo escuro: False)
+[2026-02-24 21:23:43] Gradiente: True
+[2026-02-24 21:23:43] Stroke: {'enabled': True, 'color': '#cecdcf', 'width': 3}
+[2026-02-24 21:23:43] Sombra: {'enabled': False, 'color': '#000000', 'offset_x': 0, 'offset_y': 0, 'blur': 5}
+[2026-02-24 21:28:09] --- NOVA SOLICITAÇÃO ---
+[2026-02-24 21:28:09] Cor detectada: #a29da0 (Fundo escuro: False)
+[2026-02-24 21:28:09] Gradiente: True
+[2026-02-24 21:28:09] Stroke: {'enabled': True, 'color': '#cecccf', 'width': 3}
+[2026-02-24 21:28:09] Sombra: {'enabled': False, 'color': '#000000', 'offset_x': 0, 'offset_y': 0, 'blur': 5}
+[2026-02-24 21:29:08] --- NOVA SOLICITAÇÃO ---
+[2026-02-24 21:29:08] Cor detectada: #c1c0c3 (Fundo escuro: False)
+[2026-02-24 21:29:08] Gradiente: False
+[2026-02-24 21:29:08] Stroke: {'enabled': True, 'color': '#dfe0e1', 'width': 3}
+[2026-02-24 21:29:08] Sombra: {'enabled': False, 'color': '#000000', 'offset_x': 0, 'offset_y': 0, 'blur': 5}
+[2026-02-24 21:34:05] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 21:34:05] Cor Normalizada: #8f8d90 (Original: [143.68905393 141.33858218 144.51118832])
+[2026-02-24 21:36:47] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 21:36:47] ERRO: OpenCV(4.10.0) /io/opencv/modules/imgcodecs/src/loadsave.cpp:813: error: (-215:Assertion failed) !buf.empty() in function 'imdecode_'
+
+[2026-02-24 21:37:05] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 21:37:05] Cor Normalizada: #8b8b8f (Original: [139.75899441 139.35970407 143.10186224])
+[2026-02-24 21:43:32] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 21:43:32] Cor Normalizada: #b5b0b3 (Original: [181.04974446 176.63413969 179.96759796])
+[2026-02-24 21:53:54] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 21:53:54] Cor Normalizada: #bbb8bc (Original: [187.58567588 184.97773362 188.35447957])
+[2026-02-24 22:02:59] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 22:02:59] Cor Normalizada: #bab7ba (Original: [186.27130594 183.30784022 186.45065812])
+[2026-02-24 22:04:47] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 22:04:47] Cor Normalizada: #bab7ba (Original: [186.19197161 183.30662444 186.42401779])
+[2026-02-24 22:04:54] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 22:04:54] Cor Normalizada: #b4b0b3 (Original: [180.69591906 176.56220885 179.58884899])
+[2026-02-24 22:08:43] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 22:08:43] Cor Normalizada: #ffffff (Original: [207.70993915 208.68356998 210.79817444])
+[2026-02-24 22:10:39] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 22:10:39] Cor Normalizada: #ffffff (Original BGR: [189.18833235 185.59436964 187.90496449])
+[2026-02-24 22:10:39] Resultado enviado: {'color_primary': '#ffffff', 'gradient': {'enabled': False, 'colors': ['#ffffff', '#ffffff']}, 'stroke': {'enabled': True, 'color': '#ffffff', 'width': 2}, 'shadow': {'enabled': False, 'color': '#000000', 'offset_x': 0, 'offset_y': 0, 'blur': 5}}
+[2026-02-24 22:12:37] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 22:12:37] Cor Normalizada: #ffffff (Original BGR: [189.65566841 186.19200681 188.72998549])
+[2026-02-24 22:12:37] Resultado enviado: {'color_primary': '#ffffff', 'gradient': {'enabled': False, 'colors': ['#ffffff', '#ffffff']}, 'stroke': {'enabled': True, 'color': '#ffffff', 'width': 2}, 'shadow': {'enabled': False, 'color': '#000000', 'offset_x': 0, 'offset_y': 0, 'blur': 5}}
+[2026-02-24 22:12:56] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 22:12:56] Cor Normalizada: #ffffff (Original BGR: [221.24094708 219.23955432 218.55849582])
+[2026-02-24 22:12:56] Resultado enviado: {'color_primary': '#ffffff', 'gradient': {'enabled': True, 'colors': ['#ffffff', '#ffffff']}, 'stroke': {'enabled': False, 'color': '#000000', 'width': 0}, 'shadow': {'enabled': False, 'color': '#000000', 'offset_x': 0, 'offset_y': 0, 'blur': 5}}
+[2026-02-24 22:16:13] --- REQUISIÇÃO DE EXTRAÇÃO ---
+[2026-02-24 22:16:13] Cor Detectada: #ffffff (Raw: [193.31582528 190.15158525 187.93876718])
+[2026-02-24 22:19:03] --- CAPTURA INICIADA ---
+[2026-02-24 22:19:03] Cor Primária: #ffffff
+[2026-02-24 22:19:03] Sucesso: {'color_primary': '#ffffff', 'gradient': {'enabled': True, 'colors': ['#ffffff', '#ffffff']}, 'stroke': {'enabled': False, 'color': '#000000', 'width': 0}, 'shadow': {'enabled': False, 'color': '#000000', 'offset_x': 0, 'offset_y': 0, 'blur': 4}}
+[2026-02-24 22:28:04] ERRO CRÍTICO NA EXTRAÇÃO: boolean index did not match indexed array along axis 0; size of axis is 53 but size of corresponding boolean axis is 26113
+[2026-02-24 22:30:40] ERRO CRÍTICO NA EXTRAÇÃO: boolean index did not match indexed array along axis 0; size of axis is 118 but size of corresponding boolean axis is 5257
+[2026-02-24 22:43:17] ERRO CRÍTICO NA EXTRAÇÃO: boolean index did not match indexed array along axis 0; size of axis is 38 but size of corresponding boolean axis is 2093
+[2026-02-24 22:46:23] ERRO CRÍTICO NA EXTRAÇÃO: boolean index did not match indexed array along axis 0; size of axis is 47 but size of corresponding boolean axis is 3117

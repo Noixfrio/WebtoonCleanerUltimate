@@ -358,8 +358,12 @@ const editor = (() => {
         syncAndClose: () => {
             const bgNode = stage.findOne('.bg-image');
             if (!bgNode) {
-                if (window.opener) window.close();
-                else window.location.href = "http://localhost:5000";
+                const targetWindow = window.opener || window.parent;
+                if (targetWindow && targetWindow !== window) {
+                    targetWindow.postMessage({ type: "CLOSE_EDITOR" }, "*");
+                } else {
+                    window.location.href = "http://localhost:5000";
+                }
                 return;
             }
 
@@ -368,8 +372,12 @@ const editor = (() => {
 
             // Pequeno delay para garantir o envio antes de fechar
             setTimeout(() => {
-                if (window.opener) window.close();
-                else window.location.href = "http://localhost:5000";
+                const targetWindow = window.opener || window.parent;
+                if (targetWindow && targetWindow !== window) {
+                    targetWindow.postMessage({ type: "CLOSE_EDITOR" }, "*");
+                } else {
+                    window.location.href = "http://localhost:5000";
+                }
             }, 600);
         },
 

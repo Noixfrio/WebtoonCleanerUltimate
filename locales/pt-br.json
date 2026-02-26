@@ -1,0 +1,17 @@
+{
+    "app_title": "Toonix Editor",
+    "btn_start": "Iniciar",
+    "btn_update": "Atualizar Agora",
+    "btn_settings": "Configurações",
+    "btn_support": "Apoiar Projeto",
+    "status_idle": "Pronto para iniciar",
+    "status_checking": "Verificando integridade...",
+    "status_updating": "Baixando atualização...",
+    "status_error": "Erro de integridade!",
+    "msg_mandatory_update": "Uma atualização obrigatória está disponível.",
+    "msg_hash_error": "Falha na verificação de arquivos. O app pode ter sido modificado.",
+    "settings_lang": "Idioma",
+    "settings_analytics": "Analytics anônimo",
+    "settings_save": "Salvar",
+    "log_viewer_title": "Console de Diagnóstico"
+}

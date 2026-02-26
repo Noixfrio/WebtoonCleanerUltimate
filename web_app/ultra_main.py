@@ -90,5 +90,4 @@ async def api_ultra_inpaint(req: UltraInpaintRequest):
         logger.error(f"Erro Ultra IA Sandbox: {str(e)}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=5001)
+

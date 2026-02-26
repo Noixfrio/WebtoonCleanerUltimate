@@ -59,12 +59,23 @@ def get_resource_path(relative_path):
         ]
         for base in base_options:
             candidate = base / relative_path
-            logger.info(f"Checking resource at: {candidate}")
             if candidate.exists():
-                logger.info(f"Resource found: {relative_path} -> {candidate}")
                 return candidate
+        
+        # Última tentativa: diretório de trabalho atual (caso pastas tenham sido movidas para o root)
+        candidate = Path(os.getcwd()) / relative_path
+        if candidate.exists():
+             return candidate
+             
+        # Tentar no diretório do arquivo se for um script
+        candidate = Path(__file__).parent.parent / relative_path
+        if candidate.exists():
+            return candidate
+            
         logger.warning(f"Resource NOT found in any base: {relative_path}")
         return Path(relative_path) # Fallback to relative
+    
+    # Modo desenvolvimento
     return Path(__file__).parent.parent / relative_path
 
 logging.basicConfig(level=logging.INFO)

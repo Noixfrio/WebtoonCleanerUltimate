@@ -1,0 +1,110 @@
+name: Toonix Editor Release Pipeline
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Linux Dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-glx libxkbcommon-x11-0 python3-tk libgirepository1.0-dev gcc libcairo2-dev pkg-config gir1.2-gtk-3.0
+
+      - name: Install Python Requirements
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller launcher.spec --clean --y
+
+      - name: Prepare Windows Artifact
+        if: matrix.os == 'windows-latest'
+        run: |
+          Move-Item -Path "dist\ToonixLauncher\ToonixLauncher.exe" -Destination "dist\Toonix-${{ github.ref_name }}-windows.exe"
+          $hash = (Get-FileHash "dist\Toonix-${{ github.ref_name }}-windows.exe" -Algorithm SHA256).Hash
+          echo "$hash" > "dist\windows_sha256.txt"
+
+      - name: Prepare Linux Artifact
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mv dist/ToonixLauncher/ToonixLauncher dist/Toonix-${{ github.ref_name }}-linux
+          sha256sum dist/Toonix-${{ github.ref_name }}-linux | awk '{ print $1 }' > dist/linux_sha256.txt
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ matrix.os }}
+          path: |
+            dist/Toonix-*.exe
+            dist/Toonix-*-linux
+            dist/*_sha256.txt
+          retention-days: 1
+
+  release:
+    name: Publish Release and version.json
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-artifacts
+          merge-multiple: true
+
+      - name: Generate version.json dynamically
+        run: |
+          WIN_HASH=$(cat dist-artifacts/windows_sha256.txt)
+          LINUX_HASH=$(cat dist-artifacts/linux_sha256.txt)
+          VERSION="${{ github.ref_name }}"
+          CLEAN_VERSION=${VERSION#v}
+          
+          cat <<EOF > dist-artifacts/version.json
+          {
+            "version": "$CLEAN_VERSION",
+            "release_date": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+            "windows": {
+              "url": "https://github.com/${{ github.repository }}/releases/download/$VERSION/Toonix-$VERSION-windows.exe",
+              "sha256": "$WIN_HASH"
+            },
+            "linux": {
+              "url": "https://github.com/${{ github.repository }}/releases/download/$VERSION/Toonix-$VERSION-linux",
+              "sha256": "$LINUX_HASH"
+            }
+          }
+          EOF
+          cat dist-artifacts/version.json
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Toonix Editor ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist-artifacts/Toonix-*.exe
+            dist-artifacts/Toonix-*-linux
+            dist-artifacts/version.json

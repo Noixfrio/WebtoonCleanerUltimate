@@ -380,7 +380,6 @@
             margin: 0 !important;
             padding: 0 !important;
             border-radius: 0 !important;
-            vertical-align: top;
         }
 
         /* Botão Flutuante Ultra IA */
@@ -417,6 +416,48 @@
         .ultra-float-btn span {
             font-size: 14px;
         }
+
+        /* Modal Iframe Ultra IA */
+        #ultraModalOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20000;
+            background: #000;
+        }
+
+        #ultraModalOverlay iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(239, 68, 68, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 20001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .modal-close-btn:hover {
+            background: #ef4444;
+            transform: scale(1.1);
+        }
     </style>
 </head>
 
@@ -435,7 +476,7 @@
             <button id="browserEditBtn" class="btn-download" style="background-color: #8b5cf6;"
                 onclick="openInHTMLEditor()" disabled>🎨 Editar no Navegador</button>
             <button id="btnProEditor" class="btn-download" style="background-color: #f59e0b;"
-                onclick="window.open('http://localhost:5002', '_blank')" disabled>🚀 Abrir Editor Pro (5002)</button>
+                onclick="openProfessionalEditor(0)" disabled>🚀 Abrir Editor Pro (5002)</button>
         </div>
     </div>
 
@@ -480,6 +521,12 @@
         </div>
     </div>
     <div id="readerView" class="reader-view" style="display: none;"></div>
+
+    <!-- Iframe Modal para Ultra IA e Editor Pro -->
+    <div id="ultraModalOverlay">
+        <button class="modal-close-btn" onclick="closeUltraLab()">✕</button>
+        <iframe id="ultraIframe" src=""></iframe>
+    </div>
 
     <!-- Cursor Dinâmico Flutuante -->
     <div id="brushCursor"
@@ -821,40 +868,18 @@
             tCtx.drawImage(data.fg, 0, 0);
 
             const base64 = tempComp.toDataURL("image/png");
+            currentUltraBase64 = base64; // Reutiliza a variável global para o postMessage
+
             const editorUrl = `http://localhost:5002/?index=${index}`;
-            const editorWindow = window.open(editorUrl, '_blank');
+
+            // Usar modal interno em vez de window.open
+            const overlay = document.getElementById('ultraModalOverlay');
+            const iframe = document.getElementById('ultraIframe');
+            iframe.src = editorUrl;
+            overlay.style.display = 'block';
 
             // Salvar para o listener de prontidão (Ready)
             window.pendingProfessionalImage = base64;
-
-            // Escutar quando o editor nos avisar que carregou
-            const messageHandler = (event) => {
-                if (event.data === "EDITOR_READY") {
-                    console.log("[INTEGRAÇÃO] Editor Pro avisou que está pronto. Enviando dados...");
-
-                    // 1. Envia a imagem base (Fundo + Pintura atual)
-                    editorWindow.postMessage({ type: "LOAD_IMAGE", base64: base64 }, "*");
-
-                    // 2. Se tivermos um estado Konva anterior, enviamos para permitir RE-EDIÇÃO
-                    if (data.proState) {
-                        console.log("[INTEGRAÇÃO] Enviando camadas editáveis (Konva JSON) para o Pro...");
-                        editorWindow.postMessage({ type: "LOAD_PROJECT", json: data.proState }, "*");
-                    }
-
-                    window.removeEventListener("message", messageHandler);
-                }
-            };
-            window.addEventListener("message", messageHandler);
-
-            // Fallback: Tenta enviar após alguns segundos se o postMessage falhar
-            setTimeout(() => {
-                if (editorWindow) {
-                    editorWindow.postMessage({ type: "LOAD_IMAGE", base64: base64 }, "*");
-                    if (data.proState) {
-                        editorWindow.postMessage({ type: "LOAD_PROJECT", json: data.proState }, "*");
-                    }
-                }
-            }, 3000);
         }
 
         function injectToolbar() {
@@ -1924,82 +1949,88 @@
         let currentUltraBase64 = null;
         window.addEventListener("message", (event) => {
             // Permitir mensagens de portas diferentes no localhost (5000, 5001, 5002)
-            if (!event.origin.startsWith("http://localhost")) return;
+            if (!event.origin.startsWith("http://localhost") && !event.origin.startsWith("http://127.0.0.1")) return;
 
-            if (event.data === "ULTRA_READY" && currentUltraBase64) {
-                event.source.postMessage({ type: "LOAD_IMAGE", base64: currentUltraBase64 }, window.location.origin);
-                currentUltraBase64 = null;
+            if (event.data.type === "ULTRA_READY" || event.data.type === "EDITOR_READY") {
+                const iframe = document.getElementById('ultraIframe');
+                const targetBase64 = currentUltraBase64 || window.pendingProfessionalImage;
+
+                if (iframe && iframe.contentWindow) {
+                    iframe.contentWindow.postMessage({ type: "LOAD_IMAGE", base64: targetBase64 }, "*");
+                }
+
+                if (event.source && event.source !== window) {
+                    event.source.postMessage({ type: "LOAD_IMAGE", base64: targetBase64 }, "*");
+                }
             }
 
-            if (event.data && (event.data.type === "ULTRA_RESULT" || event.data.type === "EDITOR_RESULT")) {
+            if (event.data.type === "ULTRA_RESULT" || event.data.type === "EDITOR_RESULT") {
+                const { index, base64 } = event.data;
+                const finalIndex = (index !== undefined) ? index : window.lastActiveCanvasIndex;
+
+                if (finalIndex === undefined || finalIndex === null || !window.canvases[finalIndex]) return;
+
                 const img = new Image();
                 img.onload = () => {
-                    let index = event.data.index !== undefined ? event.data.index : window.lastActiveCanvasIndex;
-                    if (index !== undefined && index !== null && window.canvases && window.canvases[index]) {
-                        const bgCanvas = document.getElementById(`bg_${index}`);
-                        if (!bgCanvas) return;
-                        const bgCtx = bgCanvas.getContext('2d');
+                    const canvasData = window.canvases[finalIndex];
+                    const bgCanvas = document.getElementById(`bg_${finalIndex}`);
+                    if (!bgCanvas) return;
+                    const bgCtx = bgCanvas.getContext('2d');
 
-                        // SALVAR BACKUP ANTES DE SOBRESCREVER (Permite Desfazer)
-                        if (!window.canvases[index].bgUltraBackup) {
-                            window.canvases[index].bgUltraBackup = document.createElement('canvas');
-                        }
-                        window.canvases[index].bgUltraBackup.width = bgCanvas.width;
-                        window.canvases[index].bgUltraBackup.height = bgCanvas.height;
-                        window.canvases[index].bgUltraBackup.getContext('2d').drawImage(bgCanvas, 0, 0);
+                    // SALVAR BACKUP ANTES DE SOBRESCREVER
+                    if (!canvasData.bgUltraBackup) {
+                        const backup = document.createElement('canvas');
+                        backup.width = bgCanvas.width;
+                        backup.height = bgCanvas.height;
+                        backup.getContext('2d').drawImage(bgCanvas, 0, 0);
+                        canvasData.bgUltraBackup = backup;
+                        document.getElementById('btnUndoUltra').style.display = 'inline-block';
+                    }
 
-                        bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
+                    bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+                    bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
 
-                        // [NOVO] v29.1: Se vier do Editor Pro, salvamos o estado do projeto (Objetos Konva)
-                        // Isso permite que ao reabrir a mesma imagem no Pro, os textos continuem editáveis.
-                        if (event.data.konvaState) {
-                            window.canvases[index].proState = event.data.konvaState;
-                        }
+                    // Atualizar referências
+                    canvasData.sourceImg = img;
+                    const fgBaseCanvas = document.createElement('canvas');
+                    fgBaseCanvas.width = bgCanvas.width;
+                    fgBaseCanvas.height = bgCanvas.height;
+                    fgBaseCanvas.getContext('2d').drawImage(img, 0, 0);
+                    canvasData.baseFG = fgBaseCanvas;
 
-                        // ATUALIZAR A FONTE ORIGINAL (Persistência para o Save)
-                        window.canvases[index].sourceImg = img;
+                    // Se vier do Editor Pro, salvar konvaState
+                    if (event.data.konvaState) {
+                        canvasData.proState = event.data.konvaState;
+                    }
 
-                        // ATUALIZAR baseFG (Camada Base do Editor)
-                        // Isso é crucial para que o Reader Mode e o Save usem a nova imagem limpa
-                        const fgBaseCanvas = document.createElement('canvas');
-                        fgBaseCanvas.width = bgCanvas.width;
-                        fgBaseCanvas.height = bgCanvas.height;
-                        fgBaseCanvas.getContext('2d').drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
-                        window.canvases[index].baseFG = fgBaseCanvas;
+                    // Limpar pinceladas locais pois agora estão mescladas no fundo
+                    const fgCanvas = document.getElementById(`fg_${finalIndex}`);
+                    fgCanvas.getContext('2d').clearRect(0, 0, fgCanvas.width, fgCanvas.height);
+                    canvasData.paths = [];
+                    canvasData.texts = [];
 
-                        // Mostrar botão Reverter
-                        const btnUndo = document.getElementById('btnUndoUltra');
-                        if (btnUndo) btnUndo.style.display = 'inline-block';
+                    redrawFG(finalIndex);
+                    document.dispatchEvent(new CustomEvent(`readerRedraw_${finalIndex}`));
+                    window.dispatchEvent(new CustomEvent('readerRedrawAll'));
 
-                        // Limpar os traços e textos anteriores, pois agora fazem parte do fundo (foram processados/limpos pela IA)
-                        // Se não limparmos o FG, as manchas manuais que o usuário fez vão continuar aparecendo em cima da limpeza da IA
-                        const fgCanvas = document.getElementById(`fg_${index}`);
-                        fgCanvas.getContext('2d').clearRect(0, 0, fgCanvas.width, fgCanvas.height);
-                        window.canvases[index].paths = [];
-                        window.canvases[index].texts = [];
-
-                        redrawFG(index); // Força sincronia e limpa visualmente as "manchas" manuais
-                        document.dispatchEvent(new CustomEvent(`readerRedraw_${index}`));
-                        console.log("Imagem recebida de volta do Lab Ultra e atualizada com sucesso no BG e BaseFG!");
-
-                        // PERSISTÊNCIA NO SERVIDOR: Salva a imagem no disco para não perder ao recarregar
-                        if (sessionId && window.canvases[index].fileName) {
-                            fetch("/api/save_image_to_session", {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    session: sessionId,
-                                    filename: window.canvases[index].fileName,
-                                    image: event.data.base64
-                                })
+                    // Persistir no servidor
+                    if (sessionId && canvasData.fileName) {
+                        fetch("/api/save_image_to_session", {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                session: sessionId,
+                                filename: canvasData.fileName,
+                                image: base64
                             })
-                                .then(r => r.json())
-                                .then(d => console.log("Persistência no servidor concluída:", d))
-                                .catch(e => console.error("Erro na persistência:", e));
-                        }
+                        }).catch(e => console.error("Erro na persistência:", e));
                     }
                 };
-                img.src = event.data.base64;
+                img.src = base64;
+            }
+
+            if (event.data.type === "ULTRA_CLOSE" || event.data.type === "CLOSE_EDITOR") {
+                closeUltraLab();
             }
         });
 
@@ -2063,7 +2094,19 @@
             }
 
             currentUltraBase64 = tempComp.toDataURL("image/png");
-            window.open(`/ultra?index=${index}`, '_blank');
+
+            // Em vez de window.open, usar o modal interno
+            const overlay = document.getElementById('ultraModalOverlay');
+            const iframe = document.getElementById('ultraIframe');
+            iframe.src = `/ultra?index=${index}`;
+            overlay.style.display = 'block';
+        }
+
+        function closeUltraLab() {
+            const overlay = document.getElementById('ultraModalOverlay');
+            const iframe = document.getElementById('ultraIframe');
+            overlay.style.display = 'none';
+            iframe.src = "";
         }
 
         function undoUltraLab() {
@@ -2265,11 +2308,17 @@
                                 const textSizeEl = document.getElementById('textSize');
                                 const textColorEl = document.getElementById('textColorPicker');
 
+                                let finalSize = 30;
+                                if (textSizeEl && textSizeEl.value) {
+                                    const parsed = parseInt(textSizeEl.value, 10);
+                                    if (!isNaN(parsed)) finalSize = parsed;
+                                }
+
                                 const tempTextObj = {
                                     content: "",
                                     x, y,
-                                    size: textSizeEl ? parseInt(textSizeEl.value, 10) : 30,
-                                    color: textColorEl ? textColorEl.value : '#000000',
+                                    size: finalSize,
+                                    color: (textColorEl && textColorEl.value) ? textColorEl.value : '#000000',
                                     family: fontValue,
                                     maxWidth: null
                                 };

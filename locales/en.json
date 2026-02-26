@@ -1,0 +1,17 @@
+{
+    "app_title": "Toonix Editor",
+    "btn_start": "Start",
+    "btn_update": "Update Now",
+    "btn_settings": "Settings",
+    "btn_support": "Support Project",
+    "status_idle": "Ready to start",
+    "status_checking": "Checking integrity...",
+    "status_updating": "Downloading update...",
+    "status_error": "Integrity error!",
+    "msg_mandatory_update": "A mandatory update is available.",
+    "msg_hash_error": "File verification failed. The app may have been modified.",
+    "settings_lang": "Language",
+    "settings_analytics": "Anonymous Analytics",
+    "settings_save": "Save",
+    "log_viewer_title": "Diagnostic Console"
+}

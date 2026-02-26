@@ -20,7 +20,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "[+] Iniciando processo de compilação..."
-pyinstaller --clean manga_cleaner.spec
+pyinstaller --clean launcher.spec
 
 if [ $? -eq 0 ]; then
     echo ""

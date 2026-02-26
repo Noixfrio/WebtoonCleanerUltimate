@@ -137,18 +137,19 @@
         const urlParams = new URLSearchParams(window.location.search);
         const canvasIndex = urlParams.get('index');
 
-        window.onload = () => {
-            if (window.opener) {
-                window.opener.postMessage("ULTRA_READY", window.location.origin);
-            }
-        };
-
         window.addEventListener("message", (event) => {
-            if (event.origin !== window.location.origin) return;
             if (event.data && event.data.type === "LOAD_IMAGE") {
                 const img = new Image();
                 img.onload = () => setupEditor(img);
                 img.src = event.data.base64;
+            }
+        });
+
+        // Notificar que estamos prontos para receber a imagem
+        window.addEventListener('DOMContentLoaded', () => {
+            const target = window.opener || (window.parent !== window ? window.parent : null);
+            if (target) {
+                target.postMessage({ type: "ULTRA_READY" }, "*");
             }
         });
 
@@ -245,13 +246,14 @@
                     document.getElementById('status').innerText = "Concluído!";
                     btn.disabled = false;
 
-                    if (window.opener) {
+                    const target = window.opener || (window.parent !== window ? window.parent : null);
+                    if (target) {
                         try {
-                            window.opener.postMessage({
+                            target.postMessage({
                                 type: "ULTRA_RESULT",
                                 index: canvasIndex,
                                 base64: bgCanvas.toDataURL("image/png")
-                            }, window.location.origin);
+                            }, "*"); // Simplificado origin para garantir entrega no bundle
                             document.getElementById('status').innerText = "Salvo de volta no Editor Principal!";
                         } catch (e) {
                             console.error(e);
@@ -273,10 +275,15 @@
         }
 
         function goBack() {
+            const target = window.opener || (window.parent !== window ? window.parent : null);
+            if (target) {
+                target.postMessage({ type: "ULTRA_CLOSE" }, "*");
+            }
             if (window.opener) {
                 window.close();
             } else {
-                window.location.href = "http://localhost:5000";
+                // Se não for popup e não fechar via postMessage, recarrega home (fallback)
+                window.location.href = "/";
             }
         }
     </script>

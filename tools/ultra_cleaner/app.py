@@ -73,6 +73,4 @@ def process():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-if __name__ == '__main__':
-    # Rodando apenas localmente conforme solicitado
-    app.run(host='127.0.0.1', port=5001, debug=True)
+
