@@ -36,7 +36,7 @@ jobs:
           cache: 'pip'
 
       - name: Install Linux Dependencies
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgl1 libxkbcommon-x11-0 python3-tk libgirepository1.0-dev \
@@ -65,24 +65,26 @@ jobs:
 
       - name: Prepare Windows Artifact
         if: matrix.os == 'windows-latest'
+        shell: pwsh
         run: |
-          7z a "dist\Toonix-${{ github.ref_name }}-windows.zip" .\dist\ToonixEditor\*
-          $hash = (Get-FileHash "dist\Toonix-${{ github.ref_name }}-windows.zip" -Algorithm SHA256).Hash
-          echo "$hash" > "dist\windows_sha256.txt"
+          Compress-Archive -Path "dist/ToonixEditor/*" -DestinationPath "Toonix-${{ github.ref_name }}-windows.zip"
+          $hash = (Get-FileHash "Toonix-${{ github.ref_name }}-windows.zip" -Algorithm SHA256).Hash
+          echo "$hash" > "dist/windows_sha256.txt"
 
       - name: Prepare Linux Artifact
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-22.04'
         run: |
-          cd dist
-          zip -r Toonix-${{ github.ref_name }}-linux.zip ToonixEditor/
-          sha256sum Toonix-${{ github.ref_name }}-linux.zip | awk '{ print $1 }' > linux_sha256.txt
+          cd dist/ToonixEditor
+          zip -r ../../Toonix-${{ github.ref_name }}-linux.zip .
+          cd ../..
+          sha256sum Toonix-${{ github.ref_name }}-linux.zip | awk '{ print $1 }' > dist/linux_sha256.txt
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts-${{ matrix.os }}
           path: |
-            dist/*.zip
+            Toonix-*.zip
             dist/*_sha256.txt
           retention-days: 1
 
