@@ -49,8 +49,12 @@ jobs:
       - name: Install Python Requirements
         run: |
           python -m pip install --upgrade pip
+          # Otimização: Torch CPU para Linux para economizar espaço (evita drivers NVIDIA)
+          if [ "${{ matrix.os }}" == "ubuntu-22.04" ]; then
+            pip install torch --index-url https://download.pytorch.org/whl/cpu
+          fi
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install pyinstaller huggingface_hub
 
       - name: Build with PyInstaller
         run: pyinstaller launcher.spec --clean --noconfirm
@@ -75,6 +79,29 @@ jobs:
           du -sh dist/ToonixEditor/* | sort -h | tail -n 20
           cd dist/ToonixEditor && zip -9 -r ../../Toonix-${{ github.ref_name }}-linux.zip . && cd ../..
           sha256sum Toonix-${{ github.ref_name }}-linux.zip | awk '{ print $1 }' > linux_sha256.txt
+
+      - name: Upload to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          FILE_NAME: Toonix-${{ github.ref_name }}-${{ matrix.os == 'windows-latest' && 'windows' || 'linux' }}.zip
+        shell: bash
+        run: |
+          OS_TYPE="${{ matrix.os == 'windows-latest' && 'windows' || 'linux' }}"
+          python -c "
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi()
+          repo_id = 'samyuush/WebtoonCleanerUltimate'
+          token = os.environ['HF_TOKEN']
+          print(f'Uploading {os.environ[\"FILE_NAME\"]} to {repo_id}...')
+          api.upload_file(
+              path_or_fileobj=os.environ['FILE_NAME'],
+              path_in_repo=f'binaries/{os.environ[\"FILE_NAME\"]}',
+              repo_id=repo_id,
+              repo_type='model',
+              token=token
+          )
+          "
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -108,11 +135,11 @@ jobs:
             "version": "$CLEAN_VERSION",
             "release_date": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
             "windows": {
-              "url": "https://github.com/${{ github.repository }}/releases/download/$VERSION/Toonix-$VERSION-windows.zip",
+              "url": "https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-windows.zip",
               "sha256": "$WIN_HASH"
             },
             "linux": {
-              "url": "https://github.com/${{ github.repository }}/releases/download/$VERSION/Toonix-$VERSION-linux.zip",
+              "url": "https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-linux.zip",
               "sha256": "$LINUX_HASH"
             }
           }
@@ -127,5 +154,4 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            dist-artifacts/Toonix-*.zip
             dist-artifacts/version.json
