@@ -111,11 +111,11 @@ jobs:
             "version": "$CLEAN_VERSION",
             "release_date": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
             "windows": {
-              "url": "https://github.com/${{ github.repository }}/releases/download/$VERSION/Toonix-$VERSION-windows.exe",
+              "url": "https://github.com/${{ github.repository }}/releases/download/$VERSION/Toonix-$VERSION-windows.zip",
               "sha256": "$WIN_HASH"
             },
             "linux": {
-              "url": "https://github.com/${{ github.repository }}/releases/download/$VERSION/Toonix-$VERSION-linux",
+              "url": "https://github.com/${{ github.repository }}/releases/download/$VERSION/Toonix-$VERSION-linux.zip",
               "sha256": "$LINUX_HASH"
             }
           }
