@@ -2,14 +2,21 @@
 
 block_cipher = None
 
-added_files = [
-    ('locales/', 'locales/'),
-    ('config/', 'config/'),
-    ('web_app/templates/', 'web_app/templates/'),
-    ('web_app/static/', 'web_app/static/'),
-    ('assets/fonts/', 'assets/fonts/'),
-    ('webtoon_editor_test/', 'webtoon_editor_test/'),
-]
+# Helper to add files only if they exist
+def get_added_files():
+    files = [
+        ('locales/', 'locales/'),
+        ('config/', 'config/'),
+        ('web_app/templates/', 'web_app/templates/'),
+        ('web_app/static/', 'web_app/static/'),
+        ('webtoon_editor_test/', 'webtoon_editor_test/'),
+    ]
+    # Fontes são opcionais se não existirem no repo (podem ser baixadas depois)
+    if os.path.exists('assets/fonts'):
+        files.append(('assets/fonts/', 'assets/fonts/'))
+    return files
+
+added_files = get_added_files()
 
 a = Analysis(
     ['launcher/main.py'],
