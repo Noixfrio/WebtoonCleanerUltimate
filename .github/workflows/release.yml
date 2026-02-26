@@ -139,7 +139,9 @@ jobs:
         run: |
           VERSION="${{ github.ref_name }}"
           echo "Updating README.md to version $VERSION"
+          
           # Atualiza links e textos que contenham o padrão de versão v0.9.x-beta.x
+          # Usa um padrão mais genérico para garantir que pegue o que foi adicionado manual ou anteriormente
           sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+-beta\.[0-9]\+/$VERSION/g" README.md
           
           git config --global user.name "github-actions[bot]"
@@ -147,6 +149,22 @@ jobs:
           git add README.md
           git commit -m "docs: auto-update README to $VERSION [skip ci]" || echo "No changes to commit"
           git push origin master
+
+      - name: Generate Release Body
+        run: |
+          VERSION="${{ github.ref_name }}"
+          cat <<EOF > release_body.md
+          # Toonix Editor $VERSION
+          
+          ### 📥 Downloads Diretos (Hugging Face)
+          Devido ao limite de tamanho do GitHub, os executáveis estão hospedados no Hugging Face:
+          
+          *   **Windows:** [Toonix-$VERSION-windows.zip](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-windows.zip)
+          *   **Linux:** [Toonix-$VERSION-linux.zip](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-linux.zip)
+          
+          ---
+          *Esta release foi gerada automaticamente pelo sistema de CI/CD.*
+          EOF
 
       - name: Generate version.json dynamically
         run: |
@@ -175,6 +193,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: Toonix Editor ${{ github.ref_name }}
+          body_path: release_body.md
           draft: false
           prerelease: false
           generate_release_notes: true
