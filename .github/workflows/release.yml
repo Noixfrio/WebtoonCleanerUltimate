@@ -49,7 +49,7 @@ jobs:
       - name: Install Python Requirements
         run: |
           python -m pip install --upgrade pip
-          pip install --no-cache-dir -r requirements.txt
+          pip install -r requirements.txt
           pip install pyinstaller
 
       - name: Build with PyInstaller
@@ -66,7 +66,8 @@ jobs:
       - name: Prepare Artifacts (Linux)
         if: matrix.os == 'ubuntu-22.04'
         run: |
-          cd dist/ToonixEditor && zip -r ../../Toonix-${{ github.ref_name }}-linux.zip . && cd ../..
+          du -sh dist/ToonixEditor/* | sort -h | tail -n 20
+          cd dist/ToonixEditor && zip -1 -r ../../Toonix-${{ github.ref_name }}-linux.zip . && cd ../..
           sha256sum Toonix-${{ github.ref_name }}-linux.zip | awk '{ print $1 }' > linux_sha256.txt
 
       - name: Upload Artifacts

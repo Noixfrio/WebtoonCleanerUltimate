@@ -55,7 +55,12 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['cv2.qt.plugins', 'cv2.qt'],
+    excludes=[
+        'cv2.qt.plugins', 'cv2.qt',
+        'matplotlib', 'notebook', 'ipython', 'ipykernel', 'jedi',
+        'tornado', 'jsonschema', 'nbformat', 'nbconvert', 'testpath',
+        'unittest', 'pydoc', 'tkinter', 'tcl', 'tk'
+    ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
