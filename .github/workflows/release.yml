@@ -56,8 +56,8 @@ jobs:
       - name: Prepare Windows Artifact
         if: matrix.os == 'windows-latest'
         run: |
-          7z a -v1500m "dist\Toonix-${{ github.ref_name }}-windows.7z" dist\ToonixEditor\
-          $hash = (Get-FileHash "dist\Toonix-${{ github.ref_name }}-windows.7z.001" -Algorithm SHA256).Hash
+          7z a "dist\Toonix-${{ github.ref_name }}-windows.zip" .\dist\ToonixEditor\*
+          $hash = (Get-FileHash "dist\Toonix-${{ github.ref_name }}-windows.zip" -Algorithm SHA256).Hash
           echo "$hash" > "dist\windows_sha256.txt"
 
       - name: Prepare Linux Artifact
@@ -72,7 +72,6 @@ jobs:
         with:
           name: build-artifacts-${{ matrix.os }}
           path: |
-            dist/*.7z.*
             dist/*.zip
             dist/*_sha256.txt
           retention-days: 1
@@ -119,6 +118,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            dist-artifacts/*.7z.*
             dist-artifacts/*.zip
             dist-artifacts/version.json

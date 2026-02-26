@@ -104,18 +104,46 @@ class ToonixUpdater:
             if temp_file.exists(): temp_file.unlink()
             return False
 
-        # 3. Validar se o novo binário abre corretamente (Rollback Automático de Boot)
-        if not self._test_boot(temp_file):
+        # 3. Extrair se for ZIP
+        binary_to_test = temp_file
+        extract_dir = Path("temp_update_extract")
+        if download_url.endswith(".zip"):
+            try:
+                import zipfile
+                if extract_dir.exists(): shutil.rmtree(extract_dir)
+                extract_dir.mkdir()
+                
+                logger.info("Extraindo pacote de atualização...")
+                with zipfile.ZipFile(temp_file, 'r') as zip_ref:
+                    zip_ref.extractall(extract_dir)
+                
+                # Localizar o binário dentro da extração (ToonixEditor/ToonixLauncher)
+                if self.os_name == "windows":
+                    found = list(extract_dir.glob("**/ToonixLauncher.exe"))
+                else:
+                    found = list(extract_dir.glob("**/ToonixLauncher"))
+                
+                if not found:
+                    logger.error("Binário não encontrado dentro do ZIP extraído!")
+                    return False
+                binary_to_test = found[0]
+            except Exception as e:
+                logger.error(f"Erro ao extrair ZIP: {e}")
+                return False
+
+        # 4. Validar se o novo binário abre corretamente (Rollback Automático de Boot)
+        if not self._test_boot(binary_to_test):
             logger.error("O novo binário falhou no teste de boot! Abortando update.")
             if temp_file.exists(): temp_file.unlink()
+            if extract_dir.exists(): shutil.rmtree(extract_dir)
             return False
 
-        # 4. Preparar Swap (Diferente por OS)
+        # 5. Preparar Swap (Diferente por OS)
         try:
             if self.os_name == "windows":
-                self._apply_windows_update(temp_file)
+                self._apply_windows_update(binary_to_test)
             else:
-                self._apply_linux_update(temp_file, backup_file)
+                self._apply_linux_update(binary_to_test, backup_file)
             return True
         except Exception as e:
             logger.error(f"Falha ao aplicar atualização: {e}")
