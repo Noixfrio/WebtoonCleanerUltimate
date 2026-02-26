@@ -53,26 +53,35 @@ class ToonixUpdater:
         return None
 
     def download_file(self, url, dest_path, progress_callback=None):
-        """Download com callback de progresso para a UI."""
-        try:
-            response = requests.get(url, stream=True, timeout=30)
-            total_size = int(response.headers.get('content-length', 0))
-            downloaded = 0
-            
-            with open(dest_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=16384):
-                    if chunk:
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if progress_callback and total_size > 0:
-                            progress_callback(downloaded / total_size)
-            return True
-        except Exception as e:
-            logger.error(f"Erro no download: {e}")
-            return False
+        """Download com callback de progresso e lógica de retry (3 tentativas)."""
+        retries = 3
+        for attempt in range(retries):
+            try:
+                logger.info(f"Tentativa {attempt + 1} de download...")
+                response = requests.get(url, stream=True, timeout=30)
+                response.raise_for_status() # Lança erro para status HTTP 4xx/5xx
+                
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded = 0
+                
+                with open(dest_path, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=16384):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            if progress_callback and total_size > 0:
+                                progress_callback(downloaded / total_size)
+                return True
+            except (requests.RequestException, IOError) as e:
+                logger.warning(f"Falha na tentativa {attempt + 1}: {e}")
+                if attempt < retries - 1:
+                    time.sleep(2)
+                else:
+                    logger.error("Todas as tentativas de download falharam.")
+        return False
 
     def perform_update(self, remote_data, progress_callback=None):
-        """Executa a troca do executável baseada no OS."""
+        """Executa a troca do executável baseada no OS com validação de boot."""
         platform_data = remote_data.get(self.os_name)
         if not platform_data:
             logger.error(f"Dados de atualização não encontrados para a plataforma: {self.os_name}")
@@ -88,14 +97,20 @@ class ToonixUpdater:
         if not self.download_file(download_url, temp_file, progress_callback=progress_callback):
             return False
 
-        # 2. Validar integridade
+        # 2. Validar integridade SHA256
         actual_hash = self.calculate_sha256(temp_file)
         if actual_hash != expected_hash:
             logger.error(f"Falha de integridade! Esperado: {expected_hash}, Obtido: {actual_hash}")
             if temp_file.exists(): temp_file.unlink()
             return False
 
-        # 3. Preparar Swap (Diferente por OS)
+        # 3. Validar se o novo binário abre corretamente (Rollback Automático de Boot)
+        if not self._test_boot(temp_file):
+            logger.error("O novo binário falhou no teste de boot! Abortando update.")
+            if temp_file.exists(): temp_file.unlink()
+            return False
+
+        # 4. Preparar Swap (Diferente por OS)
         try:
             if self.os_name == "windows":
                 self._apply_windows_update(temp_file)
@@ -106,21 +121,44 @@ class ToonixUpdater:
             logger.error(f"Falha ao aplicar atualização: {e}")
             return False
 
+    def _test_boot(self, binary_path):
+        """Valida se o binário está funcional rodando-o com flag de teste."""
+        try:
+            # Dar permissão de execução para o teste no Linux
+            if self.os_name == "linux":
+                os.chmod(str(binary_path), 0o755)
+            
+            logger.info("Validando boot do novo binário...")
+            # Rodar com timeout curto para garantir que ele responde
+            result = subprocess.run(
+                [str(binary_path), "--test-boot"], 
+                capture_output=True, 
+                text=True,
+                timeout=15
+            )
+            return "BOOT_OK" in result.stdout
+        except Exception as e:
+            logger.error(f"Novo binário falhou no teste de execução: {e}")
+            return False
+
     def _apply_linux_update(self, new_file, backup_file):
-        """Lógica para Linux (AppImage ou Executável): Atômica via Rename."""
+        """Lógica para Linux: Atômica via Rename com Backup."""
         logger.info("Aplicando update Linux...")
         
         # Backup da versão atual
         if backup_file.exists(): backup_file.unlink()
-        shutil.move(str(self.current_exe), str(backup_file))
         
-        # Mover nova versão e dar permissão
-        shutil.move(str(new_file), str(self.current_exe))
-        os.chmod(str(self.current_exe), 0o755)
-        
-        logger.info("Update aplicado. Reiniciando...")
-        # Reiniciar processo
-        os.execv(sys.executable, sys.argv)
+        # Operação atômica: backup -> novo
+        try:
+            shutil.copy2(str(self.current_exe), str(backup_file)) # Copy para manter metadados e segurança
+            shutil.move(str(new_file), str(self.current_exe))
+            os.chmod(str(self.current_exe), 0o755)
+            
+            logger.info("Update aplicado com sucesso. Reiniciando...")
+            os.execv(sys.executable, sys.argv)
+        except Exception as e:
+            logger.error(f"Falha no swap Linux: {e}")
+            raise e
 
     def _apply_windows_update(self, new_file):
         """Lógica para Windows: Requer script auxiliar para matar e trocar."""

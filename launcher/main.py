@@ -25,8 +25,35 @@ def load_config():
             pass
     return {"language": "pt-br", "analytics": True}
 
+def cleanup_update_residue():
+    """Remove arquivos temporários de atualizações anteriores (.bak, .new, .bat)."""
+    try:
+        current_exe = Path(sys.executable)
+        base_dir = current_exe.parent
+        
+        # Padrões de arquivos para limpar
+        residue_patterns = ["*.bak", "*.new", "update_toonix.bat"]
+        
+        for pattern in residue_patterns:
+            for file_path in base_dir.glob(pattern):
+                try:
+                    logger.info(f"Removendo resíduo de update: {file_path.name}")
+                    file_path.unlink()
+                except Exception as e:
+                    logger.warning(f"Não foi possível remover {file_path}: {e}")
+    except Exception as e:
+        logger.error(f"Erro no cleanup de resíduos: {e}")
+
 def main():
+    # Flag para validação de boot via Updater
+    if "--test-boot" in sys.argv:
+        print("BOOT_OK")
+        sys.exit(0)
+        
     logger.info(f"Iniciando Toonix Launcher v{VERSION}")
+    
+    # 0. Limpar resíduos de updates anteriores
+    cleanup_update_residue()
     
     # Carregar Config e Idioma
     config = load_config()

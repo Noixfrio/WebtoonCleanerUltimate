@@ -29,7 +29,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-glx libxkbcommon-x11-0 python3-tk libgirepository1.0-dev gcc libcairo2-dev pkg-config gir1.2-gtk-3.0
+          sudo apt-get install -y libgl1 libxkbcommon-x11-0 python3-tk libgirepository1.0-dev gcc libcairo2-dev pkg-config gir1.2-gtk-3.0
 
       - name: Install Python Requirements
         run: |
