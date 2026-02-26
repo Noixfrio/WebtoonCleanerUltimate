@@ -59,7 +59,9 @@ a = Analysis(
         'cv2.qt.plugins', 'cv2.qt',
         'matplotlib', 'notebook', 'ipython', 'ipykernel', 'jedi',
         'tornado', 'jsonschema', 'nbformat', 'nbconvert', 'testpath',
-        'unittest', 'pydoc', 'tkinter', 'tcl', 'tk'
+        'unittest', 'pydoc', 'tkinter', 'tcl', 'tk',
+        'paddle.fluid.proto', 'paddle.dataset', 'paddle.reader',
+        'setuptools', 'pip', 'distutils', 'numpy.f2py', 'PIL.SpiderImagePlugin'
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

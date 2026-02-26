@@ -66,8 +66,14 @@ jobs:
       - name: Prepare Artifacts (Linux)
         if: matrix.os == 'ubuntu-22.04'
         run: |
+          # Limpeza agressiva dentro do pacote compilado para reduzir tamanho do Paddle
+          find dist/ToonixEditor -name "*.pyc" -delete
+          find dist/ToonixEditor -name "__pycache__" -delete
+          rm -rf dist/ToonixEditor/_internal/paddle/fluid/proto
+          rm -rf dist/ToonixEditor/_internal/paddle/dataset
+          rm -rf dist/ToonixEditor/_internal/matplotlib
           du -sh dist/ToonixEditor/* | sort -h | tail -n 20
-          cd dist/ToonixEditor && zip -1 -r ../../Toonix-${{ github.ref_name }}-linux.zip . && cd ../..
+          cd dist/ToonixEditor && zip -9 -r ../../Toonix-${{ github.ref_name }}-linux.zip . && cd ../..
           sha256sum Toonix-${{ github.ref_name }}-linux.zip | awk '{ print $1 }' > linux_sha256.txt
 
       - name: Upload Artifacts
