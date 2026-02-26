@@ -1,4 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
+import customtkinter
+import os
 
 block_cipher = None
 
@@ -14,6 +16,12 @@ def get_added_files():
     # Fontes são opcionais se não existirem no repo (podem ser baixadas depois)
     if os.path.exists('assets/fonts'):
         files.append(('assets/fonts/', 'assets/fonts/'))
+    
+    # CustomTkinter assets
+    ctk_path = os.path.dirname(customtkinter.__file__)
+    files.append((os.path.join(ctk_path, 'gui'), 'customtkinter/gui'))
+    files.append((os.path.join(ctk_path, 'assets'), 'customtkinter/assets'))
+    
     return files
 
 added_files = get_added_files()
@@ -24,6 +32,8 @@ a = Analysis(
     binaries=[],
     datas=added_files,
     hiddenimports=[
+        'tkinter',
+        '_tkinter',
         'customtkinter', 
         'PIL.ImageTk', 
         'PIL.Image', 

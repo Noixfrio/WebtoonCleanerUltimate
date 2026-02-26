@@ -46,11 +46,11 @@ jobs:
             libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-render-util0 \
             libxcb-shape0 libxcb-xinerama0 libxcb-xinput0 libgomp1
 
-      - name: Install Tcl/Tk (Tkinter)
+      - name: Verify Tcl/Tk (Tkinter)
         if: matrix.os == 'windows-latest'
         run: |
-          # Garante o Tkinter no ambiente Windows do Actions
-          python -m pip install tk
+          # Verifica se o Tkinter está disponível no ambiente do Actions
+          python -c "import tkinter; print('Tkinter Check:', tkinter.TkVersion)"
 
       - name: Install Python Requirements
         shell: bash
