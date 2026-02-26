@@ -1,4 +1,6 @@
 # 🧹 Webtoon Cleaner Ultimate
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/Noixfrio/WebtoonCleanerUltimate?color=green&label=Vers%C3%A3o%20Mais%20Nova&style=for-the-badge)
+
 
 O **Webtoon Cleaner Ultimate** é uma ferramenta de IA para limpeza de mangás e webtoons que roda direto no seu computador.
 
@@ -16,8 +18,8 @@ Existem três maneiras de usar o editor, escolha a que for melhor para você:
 
 ### 1. 🚀 Executável Portátil (Maneira Mais Fácil)
 Não precisa instalar nada! Ideal para quem quer apenas usar o programa.
-*   **Baixar:** Acesse a página de [RELEASES](https://github.com/Noixfrio/WebtoonCleanerUltimate/releases) e baixe a versão mais nova (v0.9.9-beta.6+).
-*   **Como usar:** Extraia o arquivo e abra o executável `ToonixEditor`. 
+*   **Baixar:** Acesse a página de [RELEASES](https://github.com/Noixfrio/WebtoonCleanerUltimate/releases/latest) e baixe o arquivo `.zip` da versão mais nova.
+*   **Como usar:** Extraia o arquivo e abra o executável `ToonixLauncher` (Windows) ou `ToonixLauncher` (Linux).
 *   **Nota:** Na primeira execução, o programa baixará automaticamente os modelos de IA necessários (~250MB).
 
 ### 2. 🐧 Linux / MacOS (Scripts Rápidos)
@@ -42,8 +44,8 @@ Este projeto foi refatorado para ser leve e eficiente.
 ## 💻 Instalação
 
 ### Windows (Recomendado)
-1. Baixe a release v0.9.9-beta.6 no GitHub.
-2. Extraia e execute o `ToonixEditor.exe`.
+1. Baixe a **[LATEST RELEASE](https://github.com/Noixfrio/WebtoonCleanerUltimate/releases/latest)** no GitHub.
+2. Extraia e execute o `ToonixLauncher.exe`.
 3. Aguarde o download automático dos modelos na tela inicial.
 
 ### Linux / MacOS
