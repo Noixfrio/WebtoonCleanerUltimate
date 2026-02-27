@@ -138,4 +138,6 @@ jobs:
         with:
           name: Toonix Editor ${{ github.ref_name }}
           body_path: release_body.md
-          files: version.json
+          files: |
+            version.json
+            dist-artifacts/*.zip
