@@ -118,10 +118,10 @@ jobs:
           import json, os
           with open('version.json', 'r') as f: data = json.load(f)
           data['version'] = '$VERSION'.split('-')[0].replace('v', '')
-          data['linux'] = {
-              'url': f'https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-linux.zip',
-              'sha256': '$LINUX_HASH'
-          }
+          if 'linux' not in data: data['linux'] = {}
+          data['linux']['version'] = '$VERSION'
+          data['linux']['url'] = f'https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-linux.zip'
+          data['linux']['sha256'] = '$LINUX_HASH'
           with open('version.json', 'w') as f: json.dump(data, f, indent=4)
           "
           

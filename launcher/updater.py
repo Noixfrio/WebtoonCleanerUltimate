@@ -38,11 +38,14 @@ class ToonixUpdater:
             response = requests.get(self.version_url, timeout=10)
             if response.status_code == 200:
                 data = response.json()
-                remote_v = data.get("version", "0.0.0")
+                
+                # Prioriza a versão específica da plataforma para evitar loops de update
+                platform_data = data.get(self.os_name, {})
+                remote_v = platform_data.get("version", data.get("version", "0.0.0"))
                 
                 # Comparação simples de versão
                 if remote_v != self.current_version:
-                    logger.info(f"Nova versão disponível: {remote_v}")
+                    logger.info(f"Nova versão disponível para {self.os_name}: {remote_v}")
                     return data
                 else:
                     logger.info("Sistema atualizado.")

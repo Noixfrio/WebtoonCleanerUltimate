@@ -100,10 +100,10 @@ jobs:
           import json, os
           with open('version.json', 'r') as f: data = json.load(f)
           data['version'] = '$VERSION'.split('-')[0].replace('v', '')
-          data['windows'] = {
-              'url': f'https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-windows.zip',
-              'sha256': '$WIN_HASH'
-          }
+          if 'windows' not in data: data['windows'] = {}
+          data['windows']['version'] = '$VERSION'
+          data['windows']['url'] = f'https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-windows.zip'
+          data['windows']['sha256'] = '$WIN_HASH'
           with open('version.json', 'w') as f: json.dump(data, f, indent=4)
           "
           
