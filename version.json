@@ -19,8 +19,8 @@
         "sha256": "08BB724DB379222124CCF24C5544651234FF9CBEE13430CAD18D1C6CBFA0B002"
     },
     "linux": {
-        "version": "v0.9.9-beta.33-lin",
-        "url": "https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v0.9.9-beta.33-lin-linux.zip",
-        "sha256": "5a6d166b842e8718b195c24fb05d9f6f6b33b9771413e4dede3c5e379beda959"
+        "version": "v0.9.9-beta.34-lin",
+        "url": "https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v0.9.9-beta.34-lin-linux.zip",
+        "sha256": "96086d643e2330f4bd329049dbc8ddf477c8aaaf80480979c25811b7ee0f0fad"
     }
 }
