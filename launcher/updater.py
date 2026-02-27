@@ -102,7 +102,7 @@ class ToonixUpdater:
 
         # 2. Validar integridade SHA256
         actual_hash = self.calculate_sha256(temp_file)
-        if actual_hash != expected_hash:
+        if actual_hash.lower() != expected_hash.lower():
             logger.error(f"Falha de integridade! Esperado: {expected_hash}, Obtido: {actual_hash}")
             if temp_file.exists(): temp_file.unlink()
             return False

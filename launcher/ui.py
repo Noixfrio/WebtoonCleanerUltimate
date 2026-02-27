@@ -95,6 +95,18 @@ class ToonixUI(ctk.CTk):
                 self.after(0, lambda: self._show_update_popup(remote))
                 return
             
+            self._continue_boot()
+
+        except Exception as e:
+            logger.error(f"Erro no boot worker: {e}")
+            self.after(0, lambda: self._set_status(_("status_error"), "red"))
+
+    def _continue_boot(self):
+        """ Continua a sequência de boot (Modelos -> Ready) """
+        try:
+            self._set_status(_("status_checking") + " 60%", "#58a6ff")
+            self.progress_bar.set(0.6)
+            
             # 3. Verificar Modelos de IA (Download sob demanda)
             from core.model_manager import ModelManager
             model_mgr = ModelManager()
@@ -102,15 +114,28 @@ class ToonixUI(ctk.CTk):
             missing = model_mgr.get_missing_models()
             if missing:
                 logger.info(f"Modelos ausentes detectados: {missing}")
-                self.after(0, lambda: self._set_status("Baixando Modelos de IA... (Primeira execução)", "#58a6ff"))
+                self.after(0, lambda: self._set_status("Baixando Modelos de IA... 0%", "#58a6ff"))
                 
                 def progress_hook(percentage, model_name):
-                    self.after(0, lambda: self.progress_bar.set(percentage))
-                    self.after(0, lambda: self._set_status(f"Baixando {model_name}: {int(percentage*100)}%", "#58a6ff"))
+                    global_pct = 0.6 + (percentage * 0.4)
+                    status_text = f"Baixando {model_name}: {int(percentage*100)}%"
+                    self.after(0, lambda: [self.progress_bar.set(global_pct), self._set_status(status_text, "#58a6ff")])
 
                 if not model_mgr.check_and_download_all(progress_hook=progress_hook):
                     self.after(0, lambda: self._set_status("Falha ao baixar modelos!", "red"))
                     return
+
+            # 4. Finalizar
+            def finish_boot():
+                self.progress_bar.set(1.0)
+                self._set_status(_("status_idle"), "#238636")
+                self.btn_start.configure(state="normal")
+                logger.info("Botão Iniciar liberado.")
+                
+            self.after(0, finish_boot)
+        except Exception as e:
+            logger.error(f"Erro no continue_boot: {e}")
+            self.after(0, lambda: self._set_status(_("status_error"), "red"))
 
             # 4. Finalizar
             def finish_boot():
@@ -164,7 +189,11 @@ class ToonixUI(ctk.CTk):
 
         # Se não for obrigatório, permite cancelar
         if not remote_data.get("mandatory", False):
-            btn_later = ctk.CTkButton(btn_frame, text="Depois", fg_color="#21262d", hover_color="#30363d", command=lambda: [update_win.destroy(), self._set_status(_("status_idle"), "#238636"), self.btn_start.configure(state="normal")])
+            def skip_update():
+                update_win.destroy()
+                threading.Thread(target=self._continue_boot, daemon=True).start()
+
+            btn_later = ctk.CTkButton(btn_frame, text="Depois", fg_color="#21262d", hover_color="#30363d", command=skip_update)
             btn_later.pack(side="left", padx=20)
         else:
             update_win.protocol("WM_DELETE_WINDOW", lambda: self.quit()) # Força fechar o app se fechar o popup
