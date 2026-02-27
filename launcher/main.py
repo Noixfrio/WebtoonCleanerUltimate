@@ -11,7 +11,7 @@ from launcher.i18n import i18n
 from launcher.ui import start_ui
 from launcher.updater import ToonixUpdater
 
-VERSION = "v0.9.9-beta.24-win"
+VERSION = "v0.9.9-beta.25-win"
 
 from launcher.utils import get_resource_path
 
