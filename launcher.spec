@@ -61,6 +61,7 @@ a = Analysis(
         'easyocr',
         'pytesseract',
         'PIL',
+        'jaraco.text',
         'webtoon_editor_test.app'
     ],
     hookspath=[],

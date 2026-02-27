@@ -16,3 +16,4 @@ easyocr
 websockets
 onnxruntime
 huggingface-hub
+jaraco.text
