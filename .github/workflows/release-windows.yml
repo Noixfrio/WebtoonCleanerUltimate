@@ -94,7 +94,17 @@ jobs:
         env:
           VERSION: ${{ github.ref_name }}
         run: |
-          WIN_HASH=$(cat dist-artifacts/windows_sha256.txt | tr -d '\r\n ')
+          echo "Listando arquivos em artifacts:"
+          ls -lah artifacts
+          
+          WIN_HASH=$(cat artifacts/windows_sha256.txt | tr -d '\r\n ')
+          echo "Hash capturado: $WIN_HASH"
+          
+          if [ -z "$WIN_HASH" ]; then
+            echo "ERRO: Hash está vazio. Abortando publicação."
+            exit 1
+          fi
+          
           echo "Updating README.md and version.json for Windows $VERSION with hash $WIN_HASH"
           
           # 1. Atualiza README.md
@@ -113,6 +123,9 @@ jobs:
           data['windows']['sha256'] = h
           with open('version.json', 'w') as f: json.dump(data, f, indent=4)
           "
+          
+          echo "Conteúdo do version.json:"
+          cat version.json
           
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
