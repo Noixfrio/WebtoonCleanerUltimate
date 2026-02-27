@@ -13,7 +13,7 @@ class ModelManager:
     Elimina dependência de URLs externas de terceiros.
     """
     
-    HF_REPO_ID = "Noixfrio/WebtoonCleanerModels"
+    HF_REPO_ID = "samyuush/ToonixModels"
     
     # Mapeamento do nome do arquivo no repositório para o caminho local de destino
     MODELS = {
