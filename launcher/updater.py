@@ -192,21 +192,57 @@ class ToonixUpdater:
             raise e
 
     def _apply_windows_update(self, new_file):
-        """Lógica para Windows: Requer script auxiliar para matar e trocar."""
-        logger.info("Preparando script de atualização para Windows...")
+        """Lógica profissional para Windows: Script Anti-Lock com loop de verificação."""
+        logger.info("Preparando script de atualização anti-lock para Windows...")
         bat_path = Path("update_toonix.bat")
         
-        # Conteúdo do BAT: espera o pai fechar, troca e reabre
+        exe_name = self.current_exe.name
+        new_exe_name = new_file.name
+
+        # Script .BAT Profissional (Anti-Lock)
         bat_content = f"""@echo off
-timeout /t 2 /nobreak > nul
-del "{self.current_exe}"
-move "{new_file}" "{self.current_exe}"
-start "" "{self.current_exe}"
+setlocal
+echo Aguardando processo "{exe_name}" encerrar...
+
+:waitloop
+tasklist | find /i "{exe_name}" > nul
+if not errorlevel 1 (
+    timeout /t 1 > nul
+    goto waitloop
+)
+
+echo Processo finalizado. Atualizando...
+move /Y "{new_file}" "{self.current_exe}"
+
+if exist "{self.current_exe}" (
+    echo Atualizacao concluida com sucesso.
+    start "" "{self.current_exe}"
+) else (
+    echo [ERRO] Falha na atualizacao: Arquivo nao encontrado!
+    pause
+)
+
 del "%~f0"
+exit
 """
-        with open(bat_path, "w") as f:
+        with open(bat_path, "w", encoding="cp1252") as f:
             f.write(bat_content)
         
-        # Executar o BAT de forma independente e fechar o app atual
-        subprocess.Popen([str(bat_path)], shell=True)
-        sys.exit(0)
+        # Executar o BAT em um novo console para garantir independência do processo pai
+        logger.info("Disparando script de atualização e encerrando app.")
+        
+        # 0x00000010 é CREATE_NEW_CONSOLE (necessário no Windows para o BAT sobreviver ao sys.exit)
+        CREATE_NEW_CONSOLE = 0x00000010 
+        
+        try:
+            subprocess.Popen(
+                ["cmd", "/c", str(bat_path)],
+                creationflags=CREATE_NEW_CONSOLE
+            )
+            sys.exit(0)
+        except Exception as e:
+            logger.error(f"Erro ao disparar Popen no Windows: {e}")
+            # Fallback para o modo antigo se falhar em ambientes limitados
+            subprocess.Popen([str(bat_path)], shell=True)
+            sys.exit(0)
+
