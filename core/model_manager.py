@@ -21,7 +21,7 @@ class ModelManager:
             "size_approx": "194MB"
         },
         "craft_mlt_25k.pth": {
-            "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.3/craft_mlt_25k.zip",
+            "url": "https://github.com/JaidedAI/EasyOCR/releases/download/pre-v1.1.6/craft_mlt_25k.zip",
             "path": "assets/ocr/model/craft_mlt_25k.pth",
             "is_zip": True,
             "size_approx": "15MB"
