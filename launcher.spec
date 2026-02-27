@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
-from PyInstaller.utils.hooks import collect_data_files
+from PyInstaller.utils.hooks import collect_data_files, collect_all
 
 block_cipher = None
 
@@ -20,6 +20,15 @@ def get_added_files():
     # CustomTkinter assets
     files += collect_data_files('customtkinter')
     
+    # Robust collection for OCR engines
+    for pkg in ['paddleocr', 'paddle', 'easyocr', 'pyocr']:
+        try:
+            tmp_datas, tmp_binaries, tmp_hidden = collect_all(pkg)
+            files += tmp_datas
+            # Note: binaries and hiddenimports will be handled in Analysis
+        except:
+            pass
+            
     return files
 
 added_files = get_added_files()
@@ -83,7 +92,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,
+    console=True, # Habilitado para debug! O usuário poderá ver o erro se fechar.
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
