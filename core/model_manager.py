@@ -26,7 +26,7 @@ class ModelManager:
             "size_approx": "15MB"
         },
         "english_g2.pth": {
-            "url": "https://huggingface.co/Manbehindthemadness/english_g2/resolve/main/english_g2.pth",
+            "url": "https://huggingface.co/xiaoyao9184/easyocr/resolve/main/english_g2.pth",
             "path": "assets/ocr/model/english_g2.pth",
             "size_approx": "25MB"
         }
