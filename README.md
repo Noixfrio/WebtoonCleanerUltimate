@@ -19,7 +19,7 @@ Existem três maneiras de usar o editor, escolha a que for melhor para você:
 ### 1. 🚀 Executável Portátil (Maneira Mais Fácil)
 Não precisa instalar nada! Ideal para quem quer apenas usar o programa.
 *   **Baixar:** Acesse a página de [RELEASES](https://github.com/Noixfrio/WebtoonCleanerUltimate/releases/latest) e baixe o arquivo `.zip` da versão mais nova.
-*   **Downloads Diretos (Hugging Face):** [Windows (v0.9.9-beta.25-win)](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v0.9.9-beta.25-win-windows.zip) | [Linux (v0.9.9-beta.12)](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v0.9.9-beta.12-linux.zip)
+*   **Downloads Diretos (Hugging Face):** [Windows (v0.9.9-beta.26-win)](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v0.9.9-beta.26-win-windows.zip) | [Linux (v0.9.9-beta.12)](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v0.9.9-beta.12-linux.zip)
 *   **Como usar:** Extraia o arquivo e abra o executável `ToonixLauncher` (Windows) ou `ToonixLauncher` (Linux).
 *   **Nota:** Na primeira execução, o programa baixará automaticamente os modelos de IA necessários (~250MB).
 
