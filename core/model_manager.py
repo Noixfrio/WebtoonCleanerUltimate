@@ -55,8 +55,7 @@ class ModelManager:
 
         token = os.getenv("HF_TOKEN")
         if not token:
-            logger.error("Erro: Variável de ambiente HF_TOKEN não encontrada.")
-            return False
+            logger.info("HF_TOKEN não encontrado, tentando download público...")
 
         info = self.MODELS[model_name]
         remote_name = info["remote_name"]
