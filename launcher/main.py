@@ -8,10 +8,16 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from launcher.logger import logger
 from launcher.i18n import i18n
+import os
+
+# Compatibilidade Universal (Fix Wine/OpenMP GetNumaNodeProcessorMaskEx crash)
+os.environ["KMP_AFFINITY"] = "disabled"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 from launcher.ui import start_ui
 from launcher.updater import ToonixUpdater
 
-VERSION = "v0.9.9-beta.31-win"
+VERSION = "v0.9.9-beta.32-win"
 
 from launcher.utils import get_resource_path
 
