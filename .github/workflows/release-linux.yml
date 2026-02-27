@@ -111,7 +111,17 @@ jobs:
         env:
           VERSION: ${{ github.ref_name }}
         run: |
-          LINUX_HASH=$(cat dist-artifacts/linux_sha256.txt | tr -d '\r\n ')
+          echo "Listando arquivos em artifacts:"
+          ls -lah artifacts
+          
+          LINUX_HASH=$(cat artifacts/linux_sha256.txt | tr -d '\r\n ')
+          echo "Hash capturado: $LINUX_HASH"
+          
+          if [ -z "$LINUX_HASH" ]; then
+            echo "ERRO: Hash está vazio. Abortando publicação."
+            exit 1
+          fi
+          
           echo "Updating README.md and version.json for Linux $VERSION with hash $LINUX_HASH"
           
           # 1. Atualiza README.md (específico para Linux)
@@ -130,6 +140,9 @@ jobs:
           data['linux']['sha256'] = h
           with open('version.json', 'w') as f: json.dump(data, f, indent=4)
           "
+          
+          echo "Conteúdo do version.json:"
+          cat version.json
           
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
