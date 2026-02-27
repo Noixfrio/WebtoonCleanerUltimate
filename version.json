@@ -14,8 +14,8 @@
         "Melhor performance de interface com PyWebView"
     ],
     "windows": {
-        "version": "v0.9.9-beta.22-win",
-        "url": "https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v0.9.9-beta.22-win-windows.zip",
-        "sha256": "A2D717136649BBEB929E00840843C889E5B3171C07954587F04149FF12C4A81D"
+        "version": "v0.9.9-beta.23-win",
+        "url": "https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v0.9.9-beta.23-win-windows.zip",
+        "sha256": "F9F4525F7C5E5028B3E962E2F25CF36E5B00449D8CFD45B612E14FBCA7EE316B"
     }
 }
