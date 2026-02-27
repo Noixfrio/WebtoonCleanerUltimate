@@ -88,7 +88,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-results-windows
-          path: dist-artifacts
+          path: artifacts
 
       - name: Update README.md and version.json
         env:
@@ -140,4 +140,4 @@ jobs:
           body_path: release_body.md
           files: |
             version.json
-            dist-artifacts/*.zip
+            artifacts/*.zip
