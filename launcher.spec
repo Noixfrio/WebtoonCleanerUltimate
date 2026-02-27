@@ -34,10 +34,13 @@ def get_added_files():
 added_files = get_added_files()
 
 a = Analysis(
-    ['launcher/main.py'],
+    ['launcher.py'],
     pathex=['.'],
     binaries=[],
-    datas=added_files,
+    datas=added_files + [
+        ("webtoon_editor_test/templates", "webtoon_editor_test/templates"),
+        ("webtoon_editor_test/static", "webtoon_editor_test/static"),
+    ],
     hiddenimports=[
         'tkinter',
         '_tkinter',
@@ -58,10 +61,15 @@ a = Analysis(
         'cv2',
         'numpy',
         'flask',
+        'flask.json',
+        'flask.templating',
+        'werkzeug',
         'easyocr',
         'pytesseract',
         'PIL',
         'jaraco.text',
+        'unittest',
+        'webtoon_editor_test',
         'webtoon_editor_test.app'
     ],
     hookspath=[],
@@ -71,9 +79,9 @@ a = Analysis(
         'cv2.qt.plugins', 'cv2.qt',
         'matplotlib', 'notebook', 'ipython', 'ipykernel', 'jedi',
         'tornado', 'jsonschema', 'nbformat', 'nbconvert', 'testpath',
-        'unittest', 'pydoc',
+        'pydoc',
         'paddle.fluid.proto', 'paddle.dataset', 'paddle.reader',
-        'setuptools', 'pip', 'distutils', 'numpy.f2py', 'PIL.SpiderImagePlugin'
+        'setuptools', 'pip', 'numpy.f2py', 'PIL.SpiderImagePlugin'
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
