@@ -16,7 +16,7 @@
     "windows": {
         "version": "v0.9.9-beta.33-win",
         "url": "https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v0.9.9-beta.33-win-windows.zip",
-        "sha256": ""
+        "sha256": "E4BADBDBD8BC9CD126D767016EA7B62E0415D6FEC9487905B21FD7CA027C2FD3"
     },
     "linux": {
         "version": "v0.9.9-beta.32-lin",
