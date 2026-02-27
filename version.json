@@ -1,6 +1,6 @@
 {
     "appName": "Toonix Editor",
-    "version": "0.9.0-beta-desktop",
+    "version": "0.9.9",
     "mandatory": false,
     "files": {
         "linux": {
@@ -9,8 +9,13 @@
         }
     },
     "news": [
-        "Toonix Editor agora é Nativo Desktop!",
-        "Removida dependência de navegador externo",
+        "Toonix Editor agora \u00e9 Nativo Desktop!",
+        "Removida depend\u00eancia de navegador externo",
         "Melhor performance de interface com PyWebView"
-    ]
+    ],
+    "windows": {
+        "version": "v0.9.9-beta.17-win",
+        "url": "https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v0.9.9-beta.17-win-windows.zip",
+        "sha256": "488A4CC769A43FEB5FFA0735588CD3E67DB30A76291FFDFD47E43A8C548F8046"
+    }
 }
