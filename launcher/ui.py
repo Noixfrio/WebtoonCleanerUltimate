@@ -10,9 +10,10 @@ from launcher.i18n import _, i18n
 from launcher.updater import ToonixUpdater
 
 class ToonixUI(ctk.CTk):
-    def __init__(self, version):
+    def __init__(self, version, skip_update=False):
         super().__init__()
         self.version = version
+        self.skip_update = skip_update
         self.updater = ToonixUpdater(current_v=version)
 
         self.title(_("app_title") + f" v{version}")
@@ -87,13 +88,16 @@ class ToonixUI(ctk.CTk):
     def _boot_worker(self):
         try:
             # 1. Verificar Updates
-            logger.info("Checando atualizações...")
-            self.progress_bar.set(0.2)
-            remote = self.updater.check_for_updates()
-            
-            if remote and remote.get("version") != self.version:
-                self.after(0, lambda: self._show_update_popup(remote))
-                return
+            if not self.skip_update:
+                logger.info("Checando atualizações...")
+                self.progress_bar.set(0.2)
+                remote = self.updater.check_for_updates()
+                
+                if remote and remote.get("version") != self.version:
+                    self.after(0, lambda: self._show_update_popup(remote))
+                    return
+            else:
+                logger.info("Verificação de update ignorada.")
             
             self._continue_boot()
 
@@ -298,7 +302,7 @@ class ToonixUI(ctk.CTk):
         text_area.insert("1.0", logger.get_buffer())
         text_area.configure(state="disabled")
 
-def start_ui(version):
+def start_ui(version, skip_update=False):
     ctk.set_appearance_mode("dark")
-    app = ToonixUI(version)
+    app = ToonixUI(version, skip_update=skip_update)
     app.mainloop()
