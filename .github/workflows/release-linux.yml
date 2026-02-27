@@ -71,9 +71,11 @@ jobs:
           api = HfApi()
           repo_id = 'samyuush/WebtoonCleanerUltimate'
           token = os.environ['HF_TOKEN']
+          fname = os.environ['FILE_NAME']
+          print(f'Uploading {fname} to {repo_id}...')
           api.upload_file(
-              path_or_fileobj=os.environ['FILE_NAME'],
-              path_in_repo=f'binaries/{os.environ[\"FILE_NAME\"]}',
+              path_or_fileobj=fname,
+              path_in_repo=f'binaries/{fname}',
               repo_id=repo_id,
               repo_type='model',
               token=token
