@@ -11,7 +11,7 @@ from launcher.i18n import i18n
 from launcher.ui import start_ui
 from launcher.updater import ToonixUpdater
 
-VERSION = "0.9.0-beta"
+VERSION = "0.9.9"
 
 from launcher.utils import get_resource_path
 
@@ -59,8 +59,12 @@ def main():
     config = load_config()
     i18n.load_language(config.get("language", "pt-br"))
     
-    # Iniciar UI (O boot real aconteceria via threads no splash screen)
-    start_ui(VERSION)
+    # Flag para pular update (caso o wine trave na rede)
+    if "--skip-update" in sys.argv:
+        logger.info("Update ignorado via flag.")
+        start_ui(VERSION, skip_update=True)
+    else:
+        start_ui(VERSION)
 
 if __name__ == "__main__":
     main()
