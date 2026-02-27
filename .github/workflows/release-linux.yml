@@ -108,22 +108,26 @@ jobs:
           path: dist-artifacts
 
       - name: Update README.md and version.json
+        env:
+          VERSION: ${{ github.ref_name }}
         run: |
-          VERSION="${{ github.ref_name }}"
-          LINUX_HASH=$(cat dist-artifacts/linux_sha256.txt)
+          LINUX_HASH=$(cat dist-artifacts/linux_sha256.txt | tr -d '\r\n ')
+          echo "Updating README.md and version.json for Linux $VERSION with hash $LINUX_HASH"
           
           # 1. Atualiza README.md (específico para Linux)
           sed -i "s|\[Linux (v[^)]*)\](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v[^)]*-linux.zip)|[Linux ($VERSION)](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-linux.zip)|g" README.md
           
           # 2. Atualiza version.json
-          python3 -c "
+          VERSION_ENV=$VERSION LINUX_HASH_ENV=$LINUX_HASH python3 -c "
           import json, os
+          v = os.environ['VERSION_ENV']
+          h = os.environ['LINUX_HASH_ENV']
           with open('version.json', 'r') as f: data = json.load(f)
-          data['version'] = '$VERSION'.split('-')[0].replace('v', '')
+          data['version'] = v.split('-')[0].replace('v', '')
           if 'linux' not in data: data['linux'] = {}
-          data['linux']['version'] = '$VERSION'
-          data['linux']['url'] = f'https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-linux.zip'
-          data['linux']['sha256'] = '$LINUX_HASH'
+          data['linux']['version'] = v
+          data['linux']['url'] = f'https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-{v}-linux.zip'
+          data['linux']['sha256'] = h
           with open('version.json', 'w') as f: json.dump(data, f, indent=4)
           "
           

@@ -91,22 +91,26 @@ jobs:
           path: dist-artifacts
 
       - name: Update README.md and version.json
+        env:
+          VERSION: ${{ github.ref_name }}
         run: |
-          VERSION="${{ github.ref_name }}"
-          WIN_HASH=$(cat dist-artifacts/windows_sha256.txt)
+          WIN_HASH=$(cat dist-artifacts/windows_sha256.txt | tr -d '\r\n ')
+          echo "Updating README.md and version.json for Windows $VERSION with hash $WIN_HASH"
           
           # 1. Atualiza README.md
           sed -i "s|\[Windows (v[^)]*)\](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v[^)]*-windows.zip)|[Windows ($VERSION)](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-windows.zip)|g" README.md
           
-          # 2. Atualiza version.json (apenas parte windows) usando python para segurança
-          python3 -c "
+          # 2. Atualiza version.json
+          VERSION_ENV=$VERSION WIN_HASH_ENV=$WIN_HASH python3 -c "
           import json, os
+          v = os.environ['VERSION_ENV']
+          h = os.environ['WIN_HASH_ENV']
           with open('version.json', 'r') as f: data = json.load(f)
-          data['version'] = '$VERSION'.split('-')[0].replace('v', '')
+          data['version'] = v.split('-')[0].replace('v', '')
           if 'windows' not in data: data['windows'] = {}
-          data['windows']['version'] = '$VERSION'
-          data['windows']['url'] = f'https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-windows.zip'
-          data['windows']['sha256'] = '$WIN_HASH'
+          data['windows']['version'] = v
+          data['windows']['url'] = f'https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-{v}-windows.zip'
+          data['windows']['sha256'] = h
           with open('version.json', 'w') as f: json.dump(data, f, indent=4)
           "
           
