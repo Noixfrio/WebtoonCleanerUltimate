@@ -1,0 +1,36 @@
+{
+    "appName": "Toonix Editor",
+    "version": "0.9.9",
+    "mandatory": false,
+    "changelog": "Canal de atualização incremental ativo. Commits no master viram patch automático.",
+    "news": [
+        "Atualizações incrementais: só o código muda, sem baixar o app inteiro",
+        "Toonix Editor agora é Nativo Desktop!",
+        "Removida dependência de navegador externo"
+    ],
+    "patch": {
+        "version": "v0.9.9-beta.32-win",
+        "url": "",
+        "sha256": "",
+        "min_binary": "v0.9.9-beta.32-win",
+        "changelog": "Aguardando o primeiro patch publicado pelo GitHub Actions."
+    },
+    "files": {
+        "linux": {
+            "appimage": "https://github.com/Noixfrio/WebtoonCleanerUltimate/releases/download/v0.9.0-beta/ToonixEditor-Desktop-x86_64.AppImage",
+            "sha256": "2ed25233a008966770100a9ff651b41231125db6682d46fa4a0689189bb5f1ed"
+        }
+    },
+    "windows": {
+        "version": "v0.9.9-beta.32-win",
+        "url": "https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v0.9.9-beta.32-win-windows.zip",
+        "sha256": "",
+        "full_update": false
+    },
+    "linux": {
+        "version": "v0.9.9-beta.33-lin",
+        "url": "https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v0.9.9-beta.33-lin-linux.zip",
+        "sha256": "5a6d166b842e8718b195c24fb05d9f6f6b33b9771413e4dede3c5e379beda959",
+        "full_update": false
+    }
+}

@@ -1,0 +1,111 @@
+name: Publish Toonix Patch
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "core/**"
+      - "web_app/**"
+      - "launcher/**"
+      - "config/**"
+      - "locales/**"
+      - "tools/**"
+      - "webtoon_editor_test/**"
+      - "experimental_hybrid_cleaner/**"
+      - "scripts/build_patch.py"
+      - "runtime_hooks/**"
+      - "launcher.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-patch
+  cancel-in-progress: true
+
+jobs:
+  publish_patch:
+    name: Build and publish incremental patch
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip ci]')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Build patch zip
+        run: python scripts/build_patch.py artifacts
+
+      - name: Resolve patch version
+        id: meta
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          mkdir -p artifacts
+          PATCH_VERSION="v0.9.9-patch.${RUN_NUMBER}"
+          echo "version=$PATCH_VERSION" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY'
+          import json, os, pathlib
+          meta = json.loads(pathlib.Path("artifacts/toonix-patch.sha256.json").read_text())
+          changelog = os.environ.get("COMMIT_MSG") or "Correções e melhorias."
+          pathlib.Path("artifacts/changelog.txt").write_text(changelog.strip(), encoding="utf-8")
+          print("sha256", meta["sha256"])
+          print("size", meta["size"])
+          PY
+          echo "sha256=$(python3 -c "import json; print(json.load(open('artifacts/toonix-patch.sha256.json'))['sha256'])")" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.version }}
+          name: Toonix Patch ${{ steps.meta.outputs.version }}
+          body: |
+            Patch incremental (código e interface). Não inclui PyTorch nem modelos.
+
+            ${{ github.event.head_commit.message }}
+          files: |
+            artifacts/toonix-patch.zip
+            artifacts/toonix-patch.sha256.json
+
+      - name: Update version.json
+        env:
+          PATCH_VERSION: ${{ steps.meta.outputs.version }}
+          PATCH_SHA: ${{ steps.meta.outputs.sha256 }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          version = os.environ["PATCH_VERSION"]
+          sha = os.environ["PATCH_SHA"]
+          changelog = (os.environ.get("COMMIT_MSG") or "Correções e melhorias.").strip()
+          url = f"https://github.com/Noixfrio/WebtoonCleanerUltimate/releases/download/{version}/toonix-patch.zip"
+
+          path = Path("version.json")
+          data = json.loads(path.read_text(encoding="utf-8"))
+          data["changelog"] = changelog
+          data.setdefault("patch", {})
+          data["patch"].update({
+              "version": version,
+              "url": url,
+              "sha256": sha,
+              "min_binary": data.get("windows", {}).get("version") or "v0.9.9-beta.32-win",
+              "changelog": changelog,
+          })
+          path.write_text(json.dumps(data, indent=4) + "\n", encoding="utf-8")
+          print(path.read_text(encoding="utf-8"))
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.json
+          git commit -m "chore: publish patch ${PATCH_VERSION} [skip ci]" || echo "No changes"
+          git push origin HEAD:master

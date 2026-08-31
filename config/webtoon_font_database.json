@@ -1,0 +1,40 @@
+{
+    "dialogue": [
+        "Anime Ace",
+        "CC Wild Words",
+        "Komika Axis",
+        "Manga Temple",
+        "Back Issues BB",
+        "Digital Strip"
+    ],
+    "impact": [
+        "Badaboom BB",
+        "Feast of Flesh BB",
+        "You Murderer BB",
+        "Urban Jungle"
+    ],
+    "thought": [
+        "Patrick Hand",
+        "Comic Neue Light",
+        "Indie Flower"
+    ],
+    "narrator": [
+        "Georgia",
+        "Libre Baskerville",
+        "Garamond"
+    ],
+    "sfx": [
+        "Bangers",
+        "Komika Display",
+        "Luckiest Guy"
+    ],
+    "romance": [
+        "Dancing Script",
+        "Allura"
+    ],
+    "digital": [
+        "Orbitron",
+        "Rajdhani"
+    ],
+    "custom": []
+}

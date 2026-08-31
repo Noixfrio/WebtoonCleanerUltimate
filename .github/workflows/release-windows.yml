@@ -1,0 +1,156 @@
+name: Toonix Editor Windows Release
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*-win'
+
+permissions:
+  contents: write
+
+jobs:
+  build_windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Verify Tcl/Tk (Tkinter)
+        run: |
+          python -c "import tkinter; print('Tkinter Check:', tkinter.TkVersion)"
+
+      - name: Install Python Requirements
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller huggingface_hub customtkinter
+
+      - name: Build with PyInstaller
+        run: python -m PyInstaller launcher.spec --clean --noconfirm
+
+      - name: Prepare Artifacts
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/ToonixEditor/*" -DestinationPath "Toonix-${{ github.ref_name }}-windows.zip"
+          $hash = (Get-FileHash "Toonix-${{ github.ref_name }}-windows.zip" -Algorithm SHA256).Hash
+          echo "$hash" > "windows_sha256.txt"
+
+      - name: Upload to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          FILE_NAME: Toonix-${{ github.ref_name }}-windows.zip
+        shell: bash
+        run: |
+          python -c "
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi()
+          repo_id = 'samyuush/WebtoonCleanerUltimate'
+          token = os.environ['HF_TOKEN']
+          fname = os.environ['FILE_NAME']
+          print(f'Uploading {fname} to {repo_id}...')
+          api.upload_file(
+              path_or_fileobj=fname,
+              path_in_repo=f'binaries/{fname}',
+              repo_id=repo_id,
+              repo_type='model',
+              token=token
+          )
+          "
+
+      - name: Upload Build Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-results-windows
+          path: |
+            Toonix-*-windows.zip
+            windows_sha256.txt
+          retention-days: 1
+
+  publish_windows:
+    name: Publish Windows Release
+    needs: build_windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-results-windows
+          path: artifacts
+
+      - name: Update README.md and version.json
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          echo "Listando arquivos em artifacts:"
+          ls -lah artifacts
+          
+          WIN_HASH=$(cat artifacts/windows_sha256.txt | tr -d '\r\n ')
+          echo "Hash capturado: $WIN_HASH"
+          
+          if [ -z "$WIN_HASH" ]; then
+            echo "ERRO: Hash está vazio. Abortando publicação."
+            exit 1
+          fi
+          
+          echo "Updating README.md and version.json for Windows $VERSION with hash $WIN_HASH"
+          
+          # 1. Atualiza README.md
+          sed -i "s|\[Windows (v[^)]*)\](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-v[^)]*-windows.zip)|[Windows ($VERSION)](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-windows.zip)|g" README.md
+          
+          # 2. Atualiza version.json
+          VERSION_ENV=$VERSION WIN_HASH_ENV=$WIN_HASH python3 -c "
+          import json, os
+          v = os.environ['VERSION_ENV']
+          h = os.environ['WIN_HASH_ENV']
+          with open('version.json', 'r') as f: data = json.load(f)
+          data['version'] = v.split('-')[0].replace('v', '')
+          if 'windows' not in data: data['windows'] = {}
+          data['windows']['version'] = v
+          data['windows']['url'] = f'https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-{v}-windows.zip'
+          data['windows']['sha256'] = h
+          with open('version.json', 'w') as f: json.dump(data, f, indent=4)
+          "
+          
+          echo "Conteúdo do version.json:"
+          cat version.json
+          
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md version.json
+          git commit -m "docs: auto-update Windows release to $VERSION [skip ci]" || echo "No changes"
+          git push origin master
+
+      - name: Create Release Body
+        run: |
+          VERSION="${{ github.ref_name }}"
+          cat <<EOF > release_body.md
+          # Toonix Editor $VERSION (Windows Update)
+          
+          ### 📥 Downloads Diretos (Hugging Face)
+          *   **Windows:** [Toonix-$VERSION-windows.zip](https://huggingface.co/samyuush/WebtoonCleanerUltimate/resolve/main/binaries/Toonix-$VERSION-windows.zip)
+          
+          ---
+          *Esta release foi gerada automaticamente para Windows.*
+          EOF
+
+      - name: Create/Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Toonix Editor ${{ github.ref_name }}
+          body_path: release_body.md
+          files: |
+            version.json
+            artifacts/*.zip
